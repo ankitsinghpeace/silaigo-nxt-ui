@@ -1,0 +1,160 @@
+{
+    "slug": "kurti",
+    "title": "Silaigo | Custom Kurti Stitching at Your Doorstep | Expert Tailors",
+    "description": "Get perfectly fitted custom kurtis stitched at home. Expert tailors, free pickup & delivery, designer finishes, and 48-hour turnaround. Book your free measurement today.",
+    "keywords": "kurti stitching near me, custom kurti stitching, kurti stitching at home, online kurti stitching India, bridal kurti stitching, designer kurti stitching, kurti stitching doorstep, kurti tailor online, kurti stitching 48 hour delivery",
+    "ogTitle": "Custom Kurti Stitching at Your Doorstep — Silaigo",
+    "ogDescription": "Expert kurti stitching with free home pickup & delivery. Choose from bridal, designer, and everyday styles. 4.8★ rated, 5000+ kurtis stitched.",
+    "ogImageUrl": "https://ik.imagekit.io/silaigo/kurti-og.jpg",
+    "ogImageAlt": "Custom Kurti Stitching by Silaigo",
+    "heroData": {
+        "title": "Custom Kurti Stitching at Your Doorstep",
+        "description": "Custom Kurti Stitching at Your Doorstep brings you a seamless, stress-free tailoring experience designed around your comfort. No more multiple visits to local tailors or compromising on fit—our experts come to your home, understand your requirements, and create a kurti that fits you perfectly. With free home pickup and delivery, you can sit back while we handle everything end-to-end.\n\nAt Silaigo, we offer expert design consultation to help you choose the perfect neck, sleeve, and back styles that suit your body and occasion. Our skilled tailors ensure a premium, designer finish with attention to every detail—whether it's a simple everyday kurti or a statement piece for weddings and functions. With our fast 2-day delivery, you don't have to wait long to get your perfectly stitched kurti.\n\nFrom measurement to stitching and final fitting, our process is built for convenience, precision, and style. We maintain strict quality standards so every kurti delivers the perfect fit and flawless look.\n\nIf you're looking for reliable kurti stitching near you with professional service, quick turnaround, and a designer touch, Silaigo is your go-to solution. Book your free home measurement today and experience tailoring like never before.",
+        "trustBadges": [
+            {
+                "value": "⭐ 4.8 rating"
+            },
+            {
+                "value": "5000+ Kurtis Stitched"
+            },
+            {
+                "value": "Home measurement available"
+            },
+            {
+                "value": "48 hours delivery"
+            }
+        ],
+        "ctaText": "Book Your Consultation",
+        "ctaLink": "#book-stitching"
+    },
+    "popularStylesData": {
+        "sectionHeading": "Bridal Blouse",
+        "sectionSubHeading": "Blouse",
+        "products": [
+            {
+                "name": "Classic Boat Neck Blouse",
+                "price": 799,
+                "image": "https://mytest0274.s3.eu-north-1.amazonaws.com/subcategory/null_84016f75-66ab-458d-b72a-34bd958fba6d.jpeg",
+                "productLink": "https://silaigo.com/category/2/style/684559dee2caff9d27563ddc/customize?subCatId=6815d3f57e2a9d5e4c04c24f&page=1"
+            },
+            {
+                "name": "Princess Cut Blouse",
+                "price": 899,
+                "image": "https://mytest0274.s3.eu-north-1.amazonaws.com/subcategory/null_84016f75-66ab-458d-b72a-34bd958fba6d.jpeg",
+                "productLink": "https://silaigo.com/category/2/style/684559dee2caff9d27563ddc/customize?subCatId=6815d3f57e2a9d5e4c04c24f&page=1"
+            },
+            {
+                "name": "Bridal Padded Blouse",
+                "price": 1299,
+                "image": "https://mytest0274.s3.eu-north-1.amazonaws.com/subcategory/null_84016f75-66ab-458d-b72a-34bd958fba6d.jpeg",
+                "productLink": "https://silaigo.com/category/2/style/684559dee2caff9d27563ddc/customize?subCatId=6815d3f57e2a9d5e4c04c24f&page=1"
+            },
+            {
+                "name": "Designer Backless Blouse",
+                "price": 999,
+                "image": "https://mytest0274.s3.eu-north-1.amazonaws.com/subcategory/null_84016f75-66ab-458d-b72a-34bd958fba6d.jpeg",
+                "productLink": "https://silaigo.com/category/2/style/684559dee2caff9d27563ddc/customize?subCatId=6815d3f57e2a9d5e4c04c24f&page=1"
+            }
+        ]
+    },
+    "customizeData": {
+        "sectionSubHeading": "Your blouse, your way. Choose from dozens of design options.",
+        "customizeOptions": [
+            {
+                "title": "Neck Design",
+                "items": [
+                    {
+                        "value": "Sweetheart"
+                    },
+                    {
+                        "value": "Boat neck"
+                    },
+                    {
+                        "value": "Deep back"
+                    },
+                    {
+                        "value": "round neck"
+                    },
+                    {
+                        "value": "V neck"
+                    }
+                ]
+            },
+            {
+                "title": "Sleeve Styles",
+                "items": [
+                    {
+                        "value": "Puff Sleeves"
+                    },
+                    {
+                        "value": "Full Sleeves"
+                    },
+                    {
+                        "value": "3/4 Sleeves"
+                    },
+                    {
+                        "value": "Cap Sleeves"
+                    },
+                    {
+                        "value": "Off Shoulder"
+                    },
+                    {
+                        "value": "Sleeveless"
+                    },
+                    {
+                        "value": "Noodle strap"
+                    }
+                ]
+            },
+            {
+                "title": "Back Neck",
+                "items": [
+                    {
+                        "value": "Backless"
+                    },
+                    {
+                        "value": "Potli Button"
+                    },
+                    {
+                        "value": "Dori Tie-Up"
+                    },
+                    {
+                        "value": "Keyhole Back"
+                    },
+                    {
+                        "value": "Deep V Back"
+                    }
+                ]
+            },
+            {
+                "title": "ADD Ons",
+                "items": [
+                    {
+                        "value": "Lining"
+                    },
+                    {
+                        "value": "Padding"
+                    },
+                    {
+                        "value": "Pipings"
+                    },
+                    {
+                        "value": "laces"
+                    },
+                    {
+                        "value": "Dori"
+                    },
+                    {
+                        "value": "Buttons"
+                    },
+                    {
+                        "value": "Tassels"
+                    },
+                    {
+                        "value": "Embroidery"
+                    }
+                ]
+            }
+        ]
+    }
+}

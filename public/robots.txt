@@ -1,0 +1,81 @@
+# robots.txt for https://www.silaigo.com/
+# Optimized for Search Engines and AI Crawlers
+
+# Allow all bots except restricted areas
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /login/
+Disallow: /dashboard/
+Disallow: /checkout/
+Disallow: /cart/
+Disallow: /account/
+Disallow: /api/
+
+# OpenAI Crawlers
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+# Google and AI-powered Google services
+User-agent: Googlebot
+Allow: /
+Disallow: /admin/
+
+User-agent: Google-Extended
+Allow: /
+
+# Microsoft Copilot and Bing AI
+User-agent: Bingbot
+Allow: /
+Disallow: /admin/
+
+# Anthropic Claude
+User-agent: ClaudeBot
+Allow: /
+
+# Perplexity AI
+User-agent: PerplexityBot
+Allow: /
+
+# Apple Intelligence and Siri
+User-agent: Applebot
+Allow: /
+
+# Amazon AI
+User-agent: Amazonbot
+Allow: /
+
+# Meta AI and social crawlers
+User-agent: FacebookBot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+# ByteDance (TikTok)
+User-agent: Bytespider
+Allow: /
+
+# Pinterest
+User-agent: Pinterestbot
+Allow: /
+
+# Ahrefs and SEO research tools
+User-agent: AhrefsBot
+Allow: /
+
+# Block bad or unnecessary bots (optional)
+User-agent: SemrushBot
+Allow: /
+
+# Sitemap Location
+Sitemap: https://www.silaigo.com/sitemap.xml
