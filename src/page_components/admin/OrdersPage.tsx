@@ -252,7 +252,23 @@ const OrdersPage = () => {
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [bulkStatus, setBulkStatus] = useState<string>("");
+  const [viewMode, setViewMode] = useState<"table" | "customer">("customer");
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [expandedCustomers, setExpandedCustomers] = useState<string[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  const toggleCustomerExpanded = (id: string) =>
+    setExpandedCustomers((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+
+  const openOrderModal = (orderId: string) => {
+    setSelectedOrderId(orderId);
+    setIsOrderModalOpen(true);
+  };
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) setSelectedOrderIds(allOrderIds);
@@ -303,12 +319,17 @@ const OrdersPage = () => {
   const { user } = useAuth();
   const [orderToDelete, setOrderToDelete] = useState(null);
   const [isMeasurementModalOpen, setIsMeasurementModalOpen] = useState(false);
-  const [tab, setTab] = useState<"orders" | "pickups">(
-    user.role === UserRole.PICKUP_COORDINATOR ? "pickups" : "orders",
-  );
+  const [tab, setTab] = useState<"orders" | "pickups">("orders");
   const orderToEditMeasurement = useRef<string | null>(null);
   const [orderExistingMeasurementData, setOrderExistingMeasurementData] =
     useState({});
+
+  // Set initial tab based on user role
+  useEffect(() => {
+    if (user) {
+      setTab(user.role === UserRole.PICKUP_COORDINATOR ? "pickups" : "orders");
+    }
+  }, [user]);
 
   const { toast } = useToast();
   const canView =
@@ -337,6 +358,11 @@ const OrdersPage = () => {
       });
     }
   }, []);
+
+  // Don't render if user is not loaded yet
+  if (!user) {
+    return null;
+  }
 
   // Get active filters directly from searchParams
   const activeFilters = SEARCH_FIELDS.filter((field) =>
@@ -479,6 +505,59 @@ const OrdersPage = () => {
     orders.length > 0 && selectedOrderIds.length === orders.length;
   const isIndeterminate =
     selectedOrderIds.length > 0 && selectedOrderIds.length < orders.length;
+
+  // Group orders by customer
+  const groupedOrders = useMemo(() => {
+    if (!orders) return [];
+
+    const grouped = orders.reduce((acc: any, order: any) => {
+      const customerKey = order.customerId || order.customerName;
+      if (!acc[customerKey]) {
+        acc[customerKey] = {
+          customerId: customerKey,
+          customerName: order.customerName,
+          customerPhone: order.customerPhone,
+          customerEmail: order.customerEmail,
+          orders: [],
+          totalAmount: 0,
+          totalItems: 0,
+          paidCount: 0,
+          pendingPaymentCount: 0,
+          completedCount: 0,
+          nextDelivery: null as string | null,
+        };
+      }
+      const bucket = acc[customerKey];
+      bucket.orders.push(order);
+      bucket.totalItems += 1;
+      bucket.totalAmount += order.productPrice || 0;
+      if (order.paymentStatus === PaymentStatus.SUCCESS) bucket.paidCount += 1;
+      else bucket.pendingPaymentCount += 1;
+      if (order.orderStatus === OrderStatus.COMPLETED) bucket.completedCount += 1;
+      if (order.appointmentDate) {
+        if (
+          !bucket.nextDelivery ||
+          new Date(order.appointmentDate) < new Date(bucket.nextDelivery)
+        ) {
+          bucket.nextDelivery = order.appointmentDate;
+        }
+      }
+      return acc;
+    }, {});
+
+    return Object.values(grouped);
+  }, [orders]);
+
+  const selectedOrder = useMemo(() => {
+    if (!selectedOrderId) return null;
+    return (
+      (orders || []).find((o: any) => o.id === selectedOrderId) ||
+      (pinnedOrders || []).find((o: any) => o.id === selectedOrderId) ||
+      null
+    );
+  }, [selectedOrderId, orders, pinnedOrders]);
+
+
 
   const { mutate: updateOrderStatus } = useMutation({
     mutationFn: ({ orderId, status }: { orderId: string; status: string }) => {
@@ -1320,6 +1399,26 @@ const OrdersPage = () => {
                 ))}
               </div>
             )}
+
+            <div className="flex items-center gap-2 mt-4">
+              <span className="text-sm text-muted-foreground">View:</span>
+              <Button
+                type="button"
+                variant={viewMode === "table" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("table")}
+              >
+                Table View
+              </Button>
+              <Button
+                type="button"
+                variant={viewMode === "customer" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("customer")}
+              >
+                Customer View
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -1624,9 +1723,224 @@ const OrdersPage = () => {
                     </>
                   )}
 
-                  <h3 className="md:text-center text-3xl p-2">Orders List</h3>
-                  {/* Bulk status update UI */}
-                  <div className="flex items-center gap-4 mb-2">
+                  <h3 className="text-xl font-semibold p-2">Orders List</h3>
+
+                  {viewMode === "customer" ? (
+                    // Customer Grouped List View
+                    <div className="rounded-lg border overflow-hidden">
+                      {/* header row */}
+                      <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-2.5 bg-muted/60 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        <div className="col-span-3">Customer</div>
+                        <div className="col-span-1 text-center">Orders</div>
+                        <div className="col-span-2">Next Delivery</div>
+                        <div className="col-span-2">Payment</div>
+                        <div className="col-span-2">Progress</div>
+                        <div className="col-span-2 text-right">Total</div>
+                      </div>
+
+                      <div className="divide-y">
+                        {groupedOrders.length === 0 ? (
+                          <p className="text-center text-muted-foreground py-10">
+                            No orders found
+                          </p>
+                        ) : (
+                          groupedOrders.map((customer: any) => {
+                            const isOpen = expandedCustomers.includes(
+                              customer.customerId,
+                            );
+                            return (
+                              <div key={customer.customerId}>
+                                <div className="grid grid-cols-12 gap-3 items-center px-4 py-3 hover:bg-muted/40 transition-colors">
+                                  <div className="col-span-12 md:col-span-3 flex items-center gap-3 min-w-0">
+                                    <button
+                                      type="button"
+                                      aria-label={isOpen ? "Collapse" : "Expand"}
+                                      onClick={() =>
+                                        toggleCustomerExpanded(customer.customerId)
+                                      }
+                                      className="h-7 w-7 shrink-0 rounded-md border flex items-center justify-center text-muted-foreground hover:bg-muted"
+                                    >
+                                      <span
+                                        className={cn(
+                                          "transition-transform text-xs",
+                                          isOpen && "rotate-90",
+                                        )}
+                                      >
+                                        ▶
+                                      </span>
+                                    </button>
+                                    <div className="h-9 w-9 shrink-0 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold">
+                                      {(customer.customerName || "?")
+                                        .trim()
+                                        .charAt(0)
+                                        .toUpperCase()}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="font-semibold truncate">
+                                        {customer.customerName || "Unknown"}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground truncate">
+                                        {customer.customerPhone || "—"}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="col-span-3 md:col-span-1 md:text-center">
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                                      {customer.totalItems}
+                                    </span>
+                                  </div>
+
+                                  <div className="col-span-4 md:col-span-2 text-sm">
+                                    {customer.nextDelivery &&
+                                    !isNaN(new Date(customer.nextDelivery).getTime())
+                                      ? format(
+                                          new Date(customer.nextDelivery),
+                                          "dd MMM yyyy",
+                                        )
+                                      : "N/A"}
+                                  </div>
+
+                                  <div className="col-span-5 md:col-span-2 text-sm">
+                                    <span className="text-green-700">
+                                      {customer.paidCount} paid
+                                    </span>
+                                    {customer.pendingPaymentCount > 0 && (
+                                      <span className="text-amber-700">
+                                        {" "}
+                                        · {customer.pendingPaymentCount} pending
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="col-span-8 md:col-span-2">
+                                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                                      <div
+                                        className="h-full bg-primary"
+                                        style={{
+                                          width: `${
+                                            customer.totalItems
+                                              ? (customer.completedCount /
+                                                  customer.totalItems) *
+                                                100
+                                              : 0
+                                          }%`,
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="text-[11px] text-muted-foreground mt-1">
+                                      {customer.completedCount}/{customer.totalItems}{" "}
+                                      completed
+                                    </div>
+                                  </div>
+
+                                  <div className="col-span-4 md:col-span-2 flex items-center justify-end gap-3">
+                                    <span className="font-semibold">
+                                      ₹{customer.totalAmount.toLocaleString()}
+                                    </span>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setSelectedCustomer(customer);
+                                        setIsCustomerModalOpen(true);
+                                      }}
+                                    >
+                                      View
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                {isOpen && (
+                                  <div className="bg-muted/20 px-4 pb-3">
+                                    <div className="rounded-md border bg-background divide-y">
+                                      {customer.orders.map((order: any) => (
+                                        <div
+                                          key={order.id}
+                                          role="button"
+                                          tabIndex={0}
+                                          onClick={() => openOrderModal(order.id)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter")
+                                              openOrderModal(order.id);
+                                          }}
+                                          className="grid grid-cols-12 gap-3 items-center px-3 py-2.5 text-sm hover:bg-muted/50 cursor-pointer"
+                                        >
+                                          <div className="col-span-12 md:col-span-4 min-w-0">
+                                            <div className="font-mono text-[11px] text-blue-600 truncate">
+                                              {order.orderId}
+                                            </div>
+                                            <div className="font-medium truncate">
+                                              {order.productName}
+                                            </div>
+                                          </div>
+                                          <div className="col-span-6 md:col-span-3 text-xs">
+                                            <span className="text-muted-foreground">
+                                              Delivery:{" "}
+                                            </span>
+                                            {order.appointmentDate &&
+                                            !isNaN(
+                                              new Date(order.appointmentDate).getTime(),
+                                            )
+                                              ? format(
+                                                  new Date(order.appointmentDate),
+                                                  "dd MMM yyyy",
+                                                )
+                                              : "N/A"}
+                                          </div>
+                                          <div className="col-span-6 md:col-span-2">
+                                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary capitalize">
+                                              {order.orderProcessingState?.replace(
+                                                /_/g,
+                                                " ",
+                                              )}
+                                            </span>
+                                          </div>
+                                          <div className="col-span-6 md:col-span-2">
+                                            <span
+                                              className={cn(
+                                                "text-[11px] px-2 py-0.5 rounded-full border",
+                                                getPaymentStatusBadgeColor(
+                                                  order.paymentStatus,
+                                                ).bg,
+                                                getPaymentStatusBadgeColor(
+                                                  order.paymentStatus,
+                                                ).text,
+                                                getPaymentStatusBadgeColor(
+                                                  order.paymentStatus,
+                                                ).border,
+                                              )}
+                                            >
+                                              {getPaymentStatusDisplayText(
+                                                order.paymentStatus,
+                                              )}
+                                            </span>
+                                          </div>
+                                          <div className="col-span-6 md:col-span-1 md:text-right font-semibold">
+                                            ₹
+                                            {(
+                                              order.customPrice ||
+                                              order.productPrice ||
+                                              0
+                                            ).toLocaleString()}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
+                  ) : (
+                    // Table View
+                    <>
+                    {/* Bulk status update UI */}
+                    <div className="flex items-center gap-4 mb-2">
                     <input
                       type="checkbox"
                       checked={isAllSelected}
@@ -1931,41 +2245,44 @@ const OrdersPage = () => {
                       ))}
                     </TableBody>
                   </Table>
+                  </>
+                  )}
+            {(
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-muted-foreground">
+                  Showing {pagination?.count || 0} of {pagination?.total || 0}{" "}
+                  orders
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      pagination?.prevPage &&
+                      handlePagination(pagination.prevPage)
+                    }
+                    disabled={!pagination?.hasPrevPage || !isExporting}
+                  >
+                    Previous
+                  </Button>
+                  <span className="flex items-center px-3 text-sm">
+                    Page {pagination?.currentPage || 1} of{" "}
+                    {pagination?.totalPages || 1}
+                  </span>
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      pagination?.nextPage &&
+                      handlePagination(pagination.nextPage)
+                    }
+                    disabled={!pagination?.hasNextPage || isExporting}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
                 </div>
               )}
-            </div>
-            {/* Pagination Controls */}
-            <div className="p-6 flex justify-between items-center">
-              <div className="text-sm text-muted-foreground">
-                Showing {pagination?.count || 0} of {pagination?.total || 0}{" "}
-                orders
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    pagination?.prevPage &&
-                    handlePagination(pagination.prevPage)
-                  }
-                  disabled={!pagination?.hasPrevPage || !isExporting}
-                >
-                  Previous
-                </Button>
-                <span className="flex items-center px-3 text-sm">
-                  Page {pagination?.currentPage || 1} of{" "}
-                  {pagination?.totalPages || 1}
-                </span>
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    pagination?.nextPage &&
-                    handlePagination(pagination.nextPage)
-                  }
-                  disabled={!pagination?.hasNextPage || isExporting}
-                >
-                  Next
-                </Button>
-              </div>
             </div>
           </TabsContent>
 
@@ -2000,6 +2317,428 @@ const OrdersPage = () => {
         initialData={orderExistingMeasurementData}
         key={orderToEditMeasurement.current}
       />
+
+      {/* Customer Orders Detail Modal */}
+      <Dialog open={isCustomerModalOpen} onOpenChange={setIsCustomerModalOpen}>
+        <DialogPortal>
+          <DialogOverlay className="fixed inset-0 bg-black/50 z-50" />
+          <DialogContent className="fixed top-1/2 left-1/2 z-50 w-full max-w-4xl max-h-[90vh] -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-lg shadow-lg overflow-y-auto">
+            {selectedCustomer && (
+              <div className="space-y-6">
+                {/* Customer Header */}
+                <div className="border-b pb-4">
+                  <div className="flex items-start gap-4">
+                    <div className="h-14 w-14 shrink-0 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-semibold">
+                      {(selectedCustomer.customerName || "?")
+                        .trim()
+                        .charAt(0)
+                        .toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-2xl font-bold truncate">
+                        {selectedCustomer.customerName}
+                      </h2>
+                      <p className="text-muted-foreground text-sm truncate">
+                        {selectedCustomer.customerPhone || "—"}
+                        {selectedCustomer.customerEmail
+                          ? ` · ${selectedCustomer.customerEmail}`
+                          : ""}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                    {[
+                      {
+                        label: "Total Orders",
+                        value: selectedCustomer.totalItems,
+                      },
+                      {
+                        label: "Total Value",
+                        value: `₹${selectedCustomer.totalAmount.toLocaleString()}`,
+                      },
+                      {
+                        label: "Payment Pending",
+                        value: selectedCustomer.pendingPaymentCount ?? 0,
+                      },
+                      {
+                        label: "Next Delivery",
+                        value: selectedCustomer.nextDelivery
+                          ? format(
+                              new Date(selectedCustomer.nextDelivery),
+                              "dd MMM yyyy",
+                            )
+                          : "N/A",
+                      },
+                    ].map((stat) => (
+                      <div
+                        key={stat.label}
+                        className="rounded-lg border bg-muted/40 p-3"
+                      >
+                        <div className="text-xs text-muted-foreground">
+                          {stat.label}
+                        </div>
+                        <div className="text-base font-semibold">
+                          {stat.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Orders List */}
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">
+                    Orders ({selectedCustomer.orders.length})
+                  </h3>
+                  <div className="rounded-lg border divide-y overflow-hidden">
+                    {selectedCustomer.orders.map((order: any) => (
+                      <div
+                        key={order.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openOrderModal(order.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") openOrderModal(order.id);
+                        }}
+                        className="grid grid-cols-12 gap-3 items-center px-4 py-3 hover:bg-muted/50 cursor-pointer text-sm"
+                      >
+                        <div className="col-span-12 md:col-span-3 min-w-0">
+                          <div className="font-mono text-xs text-blue-600 truncate">
+                            {order.orderId}
+                          </div>
+                          <div className="font-medium truncate">
+                            {order.productName}
+                          </div>
+                        </div>
+                        <div className="col-span-6 md:col-span-3 min-w-0">
+                          <div className="text-[11px] text-muted-foreground">
+                            Delivery
+                          </div>
+                          <div className="truncate">
+                            {order.appointmentDate &&
+                            !isNaN(new Date(order.appointmentDate).getTime())
+                              ? format(
+                                  new Date(order.appointmentDate),
+                                  "dd MMM yyyy",
+                                )
+                              : "N/A"}
+                            {order.appointmentTime
+                              ? ` · ${order.appointmentTime}`
+                              : ""}
+                          </div>
+                        </div>
+                        <div className="col-span-3 md:col-span-2">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary capitalize">
+                            {order.orderProcessingState?.replace(/_/g, " ")}
+                          </span>
+                        </div>
+                        <div className="col-span-3 md:col-span-2">
+                          <span
+                            className={cn(
+                              "text-xs px-2 py-0.5 rounded-full border",
+                              getPaymentStatusBadgeColor(order.paymentStatus).bg,
+                              getPaymentStatusBadgeColor(order.paymentStatus).text,
+                              getPaymentStatusBadgeColor(order.paymentStatus)
+                                .border,
+                            )}
+                          >
+                            {getPaymentStatusDisplayText(order.paymentStatus)}
+                          </span>
+                        </div>
+                        <div className="col-span-12 md:col-span-2 md:text-right font-semibold">
+                          ₹
+                          {(
+                            order.customPrice ||
+                            order.productPrice ||
+                            0
+                          ).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+
+                {/* Summary */}
+                <div className="border-t pt-4">
+                  <div className="flex justify-between items-center">
+                    <div className="text-muted-foreground">Total Amount</div>
+                    <div className="text-2xl font-bold">
+                      ₹{selectedCustomer.totalAmount.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Close Button */}
+                <div className="flex justify-end">
+                  <Button onClick={() => setIsCustomerModalOpen(false)}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </DialogPortal>
+      </Dialog>
+
+      {/* Single Order Detail Modal */}
+      <Dialog open={isOrderModalOpen} onOpenChange={setIsOrderModalOpen}>
+        <DialogPortal>
+          <DialogOverlay className="fixed inset-0 bg-black/60 z-[60]" />
+          <DialogContent className="fixed top-1/2 left-1/2 z-[61] w-full max-w-5xl max-h-[92vh] -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col">
+            {selectedOrder ? (
+              <>
+                <div className="flex items-start justify-between gap-4 border-b px-6 py-4 bg-muted/30">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-xl font-bold font-mono">
+                        {selectedOrder.orderId}
+                      </h2>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium capitalize">
+                        {selectedOrder.orderProcessingState?.replace(/_/g, " ")}
+                      </span>
+                      <Link
+                        href={`/order/${selectedOrder.id}`}
+                        target="blank"
+                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                      >
+                        Open full page <ExternalLink className="w-3 h-3" />
+                      </Link>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {selectedOrder.customerName} ·{" "}
+                      {selectedOrder.customerPhone || "—"}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsOrderModalOpen(false)}
+                  >
+                    Close
+                  </Button>
+                </div>
+
+                <div className="overflow-y-auto px-6 py-5 space-y-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { label: "Product", value: selectedOrder.productName || "—" },
+                      {
+                        label: "Amount",
+                        value: `₹${(
+                          selectedOrder.customPrice || selectedOrder.productPrice || 0
+                        ).toLocaleString()}`,
+                      },
+                      {
+                        label: "Order Date",
+                        value: selectedOrder.orderDate
+                          ? format(new Date(selectedOrder.orderDate), "dd MMM yyyy, hh:mm a")
+                          : "N/A",
+                      },
+                      {
+                        label: "Delivery",
+                        value:
+                          selectedOrder.appointmentDate &&
+                          !isNaN(new Date(selectedOrder.appointmentDate).getTime())
+                            ? `${format(new Date(selectedOrder.appointmentDate), "dd MMM yyyy")}${selectedOrder.appointmentTime ? ` · ${selectedOrder.appointmentTime}` : ""}`
+                            : "N/A",
+                      },
+                      {
+                        label: "Payment Status",
+                        value: getPaymentStatusDisplayText(selectedOrder.paymentStatus),
+                      },
+                      {
+                        label: "Order Status",
+                        value: selectedOrder.orderStatus || "N/A",
+                      },
+                      {
+                        label: "Coupon",
+                        value: selectedOrder.couponCode || "—",
+                      },
+                      {
+                        label: "Pinned",
+                        value: selectedOrder.isPinned
+                          ? `Yes (#${selectedOrder.pinPosition ?? "-"})`
+                          : "No",
+                      },
+                    ].map((s) => (
+                      <div key={s.label} className="rounded-lg border bg-muted/30 p-3">
+                        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                          {s.label}
+                        </div>
+                        <div className="text-sm font-semibold capitalize break-words">
+                          {s.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Assignment & status controls */}
+                  <div className="rounded-lg border p-4 space-y-4">
+                    <h3 className="text-sm font-semibold">Manage Order</h3>
+                    <div className="flex flex-wrap items-end gap-4">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground">
+                          Processing State
+                        </label>
+                        <Select
+                          value={selectedOrder.orderProcessingState}
+                          onValueChange={(val) =>
+                            updateOrderProcessingState({
+                              orderId: selectedOrder.id,
+                              nextState: val,
+                            })
+                          }
+                        >
+                          <SelectTrigger className="w-56" disabled={!canEdit}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ORDER_TIMELINE_OPTIONS.map((opt, i) => (
+                              <SelectItem key={i} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground">
+                          Assign Stitching Agent
+                        </label>
+                        <Select
+                          disabled={isAssigningToStitchingAgent || !canEdit}
+                          value={selectedOrder.assignedToStitchingAgentId || "none"}
+                          onValueChange={(val) =>
+                            assignOrderToStitchingAgent({
+                              orderId: selectedOrder.id,
+                              agentId: val,
+                            })
+                          }
+                        >
+                          <SelectTrigger className="w-56">
+                            <SelectValue placeholder="Unassigned" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            {teamMembersViaRole?.map((el: any) => (
+                              <SelectItem key={el._id} value={el._id}>
+                                {el.firstName} {el.lastName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {user?.role === UserRole.ADMIN && (
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs text-muted-foreground">
+                            Pin order
+                          </label>
+                          <div className="flex items-center gap-2 h-10">
+                            <Switch
+                              disabled={isUpdatingPin}
+                              checked={!!selectedOrder.isPinned}
+                              onCheckedChange={(val) => {
+                                const pinPosition = window.prompt("Enter pin position");
+                                pinOrder({
+                                  orderId: selectedOrder.id,
+                                  pinPosition: Number(pinPosition),
+                                  isPinned: val,
+                                });
+                              }}
+                            />
+                            {isUpdatingPin && (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 pt-2 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setOrderExistingMeasurementData(selectedOrder.measurements);
+                          orderToEditMeasurement.current = selectedOrder.id;
+                          setIsMeasurementModalOpen(true);
+                        }}
+                      >
+                        <RulerIcon className="w-4 h-4 mr-1" /> Measurements
+                      </Button>
+                      {user?.role === UserRole.ADMIN && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={isCopyingOrder}
+                          onClick={() => duplicateOrderMutation(selectedOrder.id)}
+                        >
+                          {isCopyingOrder ? (
+                            <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                          ) : (
+                            <Repeat className="w-4 h-4 mr-1" />
+                          )}
+                          Repeat Order
+                        </Button>
+                      )}
+                      {user?.role === UserRole.ADMIN && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => {
+                            setIsOrderModalOpen(false);
+                            openConfirm(selectedOrder.id);
+                          }}
+                        >
+                          <Trash className="w-4 h-4 mr-1" /> Delete
+                        </Button>
+                      )}
+                    </div>
+
+                    {user?.role !== UserRole.ADMIN && (
+                      <div className="pt-2 border-t">
+                        <EventsOptions orderId={selectedOrder.id} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Measurements */}
+                  {selectedOrder.measurements && (
+                    <div className="rounded-lg border p-4">
+                      <h3 className="text-sm font-semibold mb-3">Measurements</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                        {Object.entries(
+                          selectedOrder.measurements?.bodyMeasurement || {},
+                        ).map(([k, v]) => (
+                          <div key={k} className="rounded border bg-muted/20 px-2 py-1">
+                            <span className="text-xs text-muted-foreground capitalize">
+                              {k.replace(/_/g, " ")}:{" "}
+                            </span>
+                            <span className="font-medium">{String(v)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Timeline */}
+                  {selectedOrder.timeLine?.length > 0 && (
+                    <div className="rounded-lg border p-4">
+                      <h3 className="text-sm font-semibold mb-3">Timeline</h3>
+                      <OrderTimelineView timeline={selectedOrder.timeLine} />
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : null}
+          </DialogContent>
+        </DialogPortal>
+      </Dialog>
     </AdminLayout>
   );
 };
