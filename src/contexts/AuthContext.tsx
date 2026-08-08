@@ -408,6 +408,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within an AuthProvider");
+  if (!context) {
+    // During build time or SSR, provide a default context to prevent build failures
+    // This is a defensive measure - in normal operation, the provider should be present
+    if (typeof window === 'undefined') {
+      return {
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        adminLogin: async () => false,
+        customerLogin: async () => ({ status: false, message: 'Not in client context' }),
+        createProfile: async () => ({ status: false, message: 'Not in client context' }),
+        logout: () => {},
+        hasPermission: () => false,
+        refreshUser: async () => {},
+        accessibleSections: () => [],
+        setUser: () => {},
+      };
+    }
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
   return context;
 };

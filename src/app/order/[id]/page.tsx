@@ -1,12 +1,17 @@
 // app/order/[id]/page.tsx
-import OrderDetailsPage from "@/pages/OrderDetailsPage";
+"use client";
 
-export default async function Page({
+import { use } from "react";
+import OrderDetailsPage from "@/page_components/OrderDetailsPage";
+
+export const dynamic = 'force-dynamic';
+
+export default function Page({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await params;
+  const { id } = use(params);
 
   return <OrderDetailsPage />;
 }

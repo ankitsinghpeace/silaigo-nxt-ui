@@ -19,7 +19,7 @@ import {
   DialogTitle,
   DialogHeader,
 } from "@/components/ui/dialog";
-import BlogPreviewPage from "@/pages/BlogPreviewPage";
+import BlogPreviewPage from "@/page_components/BlogPreviewPage";
 import { useMutation } from "@tanstack/react-query";
 import { createBlog, updateBlog } from "@/services/modules/blogs.api";
 import { IBlog } from "@/types/interface";

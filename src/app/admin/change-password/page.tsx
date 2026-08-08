@@ -1,7 +1,9 @@
 // src/app/admin/change-password/page.tsx
 "use client";
 
-import ChangePassword from "@/pages/ChangePassword";
+import ChangePassword from "@/page_components/ChangePassword";
+
+export const dynamic = 'force-dynamic';
 
 export default function Page() {
   return <ChangePassword />;

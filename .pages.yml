@@ -1,0 +1,144 @@
+media:
+  input: content/media
+  output: /media
+
+content:
+  - name: pages
+    label: Landing Pages
+    type: collection
+    path: content/pages
+    filename: "{fields.slug}.json"
+    view:
+      fields: [slug, title]
+
+    fields:
+      # ── Identity ───────────────────────────────────────────────
+      - name: slug
+        label: Slug (URL path)
+        type: string
+        required: true
+
+      # ── SEO / Metadata ─────────────────────────────────────────
+      - name: title
+        label: SEO Title
+        type: string
+        required: true
+
+      - name: description
+        label: SEO Description
+        type: text
+        required: true
+
+      - name: keywords
+        label: Keywords (comma-separated)
+        type: string
+
+      - name: ogTitle
+        label: OG Title
+        type: string
+
+      - name: ogDescription
+        label: OG Description
+        type: text
+
+      - name: ogImageUrl
+        label: OG Image URL
+        type: string
+
+      - name: ogImageAlt
+        label: OG Image Alt Text
+        type: string
+
+      # ── Hero Section ───────────────────────────────────────────
+      - name: heroData
+        label: Hero Section
+        type: object
+        required: false
+        fields:
+          - name: title
+            label: Headline
+            type: string
+
+          - name: description
+            label: Description
+            type: text
+
+          - name: trustBadges
+            label: Trust Badges
+            type: object
+            list: true
+            fields:
+              - name: value
+                label: Badge Text
+                type: string
+
+          - name: ctaText
+            label: CTA Text
+            type: string
+
+          - name: ctaLink
+            label: CTA Link
+            type: string
+
+      # ── Popular Styles Section ─────────────────────────────────
+      - name: popularStylesData
+        label: Popular Styles Section
+        type: object
+        required: false
+        fields:
+          - name: sectionHeading
+            label: Section Heading
+            type: string
+
+          - name: sectionSubHeading
+            label: Section Sub-heading
+            type: string
+
+          - name: products
+            label: Products
+            type: object
+            list: true
+            fields:
+              - name: name
+                label: Product Name
+                type: string
+
+              - name: price
+                label: Price
+                type: number
+
+              - name: image
+                label: Product Image
+                type: string
+
+              - name: productLink
+                label: Product Link ( from main website )
+                type: string
+
+      # ── Customize Section ──────────────────────────────────────
+      - name: customizeData
+        label: Customize Section
+        type: object
+        required: false
+        fields:
+          - name: sectionSubHeading
+            label: Section Sub-heading
+            type: string
+
+          - name: customizeOptions
+            label: Customize Options
+            type: object
+            list: true
+            fields:
+              - name: title
+                label: Option Group Title
+                type: string
+
+              - name: items
+                label: Items
+                type: object
+                list: true
+                fields:
+                  - name: value
+                    label: Item
+                    type: string

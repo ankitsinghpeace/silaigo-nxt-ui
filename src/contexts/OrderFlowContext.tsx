@@ -14,7 +14,7 @@ import {
 } from "@/services/modules/orders.api";
 import { generateErrorMessage } from "@/lib/helpers";
 import { IOrder } from "@/types/interface";
-import CategoryById from "@/pages/CategoryById";
+import CategoryById from "@/page_components/CategoryById";
 import Swal from "sweetalert2";
 import { addToCart } from "@/lib/cart";
 import { MeasurementsModal } from "@/components/admin/modals/MeasurementsModal";

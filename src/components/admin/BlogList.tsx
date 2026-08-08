@@ -37,7 +37,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { deleteBlog, getBlogsListAdmin } from "@/services/modules/blogs.api";
 import { BlogListResponse, IBlog } from "@/types/interface";
 import { format } from "date-fns";
-import { categories, getCategoryIcon, getCategoryName } from "@/pages/BlogPage";
+import { categories, getCategoryIcon, getCategoryName } from "@/page_components/BlogPage";
 import { Dialog, DialogContent } from "../ui/dialog";
 import EditExistingBlog from "./editors/EditExistingBlog";
 import { generateErrorMessage } from "@/lib/helpers";

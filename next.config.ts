@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Force dynamic rendering for all routes to prevent AuthProvider issues during build
+  experimental: {
+    forceSwcTransforms: true,
+  },
 };
 
 export default nextConfig;

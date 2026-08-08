@@ -1,11 +1,16 @@
 // src/app/categoryid/[id]/page.tsx
-import CategoryById from "@/pages/CategoryById";
+"use client";
 
-export default async function Page({
+import { use } from "react";
+import CategoryById from "@/page_components/CategoryById";
+
+export const dynamic = 'force-dynamic';
+
+export default function Page({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await params;
+  const { id } = use(params);
   return <CategoryById />;
 }

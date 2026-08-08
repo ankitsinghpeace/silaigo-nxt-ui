@@ -1,7 +1,9 @@
 // src/app/admin/dashboard/page.tsx
 "use client";
 
-import AdminDashboard from "@/pages/admin/AdminDashboard";
+import AdminDashboard from "@/page_components/admin/AdminDashboard";
+
+export const dynamic = 'force-dynamic';
 
 export default function Page() {
   return <AdminDashboard />;

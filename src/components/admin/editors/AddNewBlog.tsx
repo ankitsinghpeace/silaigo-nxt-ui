@@ -14,7 +14,7 @@ import {
 import ImagePickerModal from "../modals/image.picker.modal";
 import { useToast } from "../../../hooks/use-toast";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import BlogPreviewPage from "@/pages/BlogPreviewPage";
+import BlogPreviewPage from "@/page_components/BlogPreviewPage";
 import { useMutation } from "@tanstack/react-query";
 import { createBlog } from "@/services/modules/blogs.api";
 import { IBlog } from "@/types/interface";
