@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+
   images: {
     remotePatterns: [
       {
@@ -12,9 +13,18 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Force dynamic rendering for all routes to prevent AuthProvider issues during build
+
   experimental: {
     forceSwcTransforms: true,
+  },
+
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "https://api.silaigo.com/:path*",
+      },
+    ];
   },
 };
 
