@@ -388,8 +388,8 @@ export async function getPageData(
               image: sub.image,
 
               productLink:
-                `/category/${data.category.categoryId}/style/${data.category.id}/customize` +
-                `?subCatId=${sub.id}&page=1`,
+                `/category/${data.category.categoryId}/style/${sub.id}/customize` +
+                `?subCatId=6812ecb20458a0919d0cc551&page=1`,
             })),
           }
         : undefined,
