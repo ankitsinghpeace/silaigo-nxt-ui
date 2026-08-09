@@ -11,15 +11,16 @@ export default function HeroSection({ heroData }: { heroData: IHeroData }) {
       className="relative isolate overflow-hidden"
     >
       <div className="absolute inset-0 -z-10">
-        <Image
-          src={heroData.imageUrl}
-          alt="Professional blouse tailoring service"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-top"
-        />
-
+        {heroData.imageUrl ? (
+          <Image
+            src={heroData.imageUrl || null}
+            alt="Professional blouse tailoring service"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-top"
+          />
+        ) : null}
         <div
           className="absolute inset-0"
           style={{

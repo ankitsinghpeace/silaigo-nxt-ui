@@ -42,7 +42,6 @@ export default async function StitchingCategoryPage({
       <JsonLd data={serviceJsonLd({ pageData, path })} />
 
       {pageData.heroData && <HeroSection heroData={pageData.heroData} />}
-      <Breadcrumbs items={crumbs} />
       <WhyChooseUs />
       {pageData.popularStylesData && (
         <PopularStyles popularStylesData={pageData.popularStylesData} />

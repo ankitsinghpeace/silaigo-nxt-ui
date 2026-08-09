@@ -1,54 +1,127 @@
-import { API_URL } from "@/lib/config";
+import { getApiBaseUrl, getServerApiBaseUrl } from "@/lib/config";
 
-// ✅ Fetch page data
-export async function getLandingData(location?: string, category?: string) {
-  let url = `${API_URL}/landing-pages/`;
-
-  if (location && category) {
-    url += `data/${location}/${category}`;
-  } else if (location) {
-    url += `location/${location}`;
-  } else if (category) {
-    url += `category/${category}`;
+/**
+ * Get the correct API base URL depending on where
+ * this function is executing.
+ *
+ * Browser:
+ *   /api
+ *
+ * Server:
+ *   https://www.silaigo.com/api
+ *
+ * This allows both browser and server requests to use
+ * the same Vercel rewrite.
+ */
+const getApiUrl = (): string => {
+  if (typeof window !== "undefined") {
+    return getApiBaseUrl();
   }
 
-  const res = await fetch(url, {
-    next: { revalidate: 60 },
-  });
+  return getServerApiBaseUrl();
+};
 
-  if (!res.ok) {
-    console.error("API error:", res.status, res.statusText);
+/**
+ * Fetch landing-page data.
+ *
+ * Supported:
+ *
+ *   getLandingData("noida", "kurti")
+ *   -> /api/landing-pages/data/noida/kurti
+ *
+ *   getLandingData("noida")
+ *   -> /api/landing-pages/location/noida
+ *
+ *   getLandingData(undefined, "kurti")
+ *   -> /api/landing-pages/category/kurti
+ */
+export async function getLandingData(location?: string, category?: string) {
+  let url = `${getApiUrl()}/landing-pages/`;
+
+  if (location && category) {
+    url += `data/${encodeURIComponent(location)}/${encodeURIComponent(category)}`;
+  } else if (location) {
+    url += `location/${encodeURIComponent(location)}`;
+  } else if (category) {
+    url += `category/${encodeURIComponent(category)}`;
+  } else {
+    console.error("getLandingData: location or category is required");
+
     return null;
   }
 
-  const json = await res.json();
+  try {
+    const res = await fetch(url, {
+      next: {
+        revalidate: 60,
+      },
+    });
 
-  return json?.data ?? null;
+    if (!res.ok) {
+      console.error("Landing API error:", res.status, res.statusText, url);
+
+      return null;
+    }
+
+    const json = await res.json();
+
+    return json?.data ?? null;
+  } catch (error) {
+    console.error("Landing API request failed:", {
+      url,
+      location,
+      category,
+      error,
+    });
+
+    throw error;
+  }
 }
 
-// ✅ Fetch ALL routes (for SEO)
+/**
+ * Fetch ALL landing-page routes.
+ *
+ * Used for:
+ * - SEO
+ * - sitemap
+ * - generateStaticParams
+ * - Explore / Directory pages
+ */
 export async function getRoutes() {
-  const url = `${API_URL}/landing-pages/routes`;
+  const url = `${getApiUrl()}/landing-pages/routes`;
 
-  const res = await fetch(url, {
-    next: { revalidate: 3600 },
-  });
+  try {
+    const res = await fetch(url, {
+      next: {
+        revalidate: 3600,
+      },
+    });
 
-  if (!res.ok) {
-    console.error("Routes API error:", res.status, res.statusText);
-    return {
-      locationsCategoryMappings: [],
-      locationsMappings: [],
-      categoriesMappings: [],
-    };
-  }
+    if (!res.ok) {
+      console.error("Routes API error:", res.status, res.statusText, url);
 
-  const response = await res.json();
-  return (
-    response.data || {
-      locationsCategoryMappings: [],
-      locationsMappings: [],
-      categoriesMappings: [],
+      return {
+        locationsCategoryMappings: [],
+        locationsMappings: [],
+        categoriesMappings: [],
+      };
     }
-  );
+
+    const response = await res.json();
+
+    return (
+      response?.data ?? {
+        locationsCategoryMappings: [],
+        locationsMappings: [],
+        categoriesMappings: [],
+      }
+    );
+  } catch (error) {
+    console.error("Routes API request failed:", {
+      url,
+      error,
+    });
+
+    throw error;
+  }
 }

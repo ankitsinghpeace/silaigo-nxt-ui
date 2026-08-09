@@ -13,7 +13,7 @@ import Breadcrumbs, { type Crumb } from "@/components/Breadcrumbs";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbJsonLd, serviceJsonLd, titleCase } from "@/lib/seo";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function StitchingLocationPage({
   params,
@@ -45,7 +45,6 @@ export default async function StitchingLocationPage({
       />
 
       {pageData.heroData && <HeroSection heroData={pageData.heroData} />}
-      <Breadcrumbs items={crumbs} />
       <WhyChooseUs />
       {pageData.popularStylesData && (
         <PopularStyles popularStylesData={pageData.popularStylesData} />
@@ -54,7 +53,7 @@ export default async function StitchingLocationPage({
         <Customize customizeData={pageData.customizeData} />
       )}
       <HowItWorks />
-      <AreasWeServe location={locationName} areas={pageData.subLocations} />
+      <AreasWeServe location={locationName} areas={pageData.sublocations} />
       <Pricing pricingData={pageData.pricingData} />
       <FAQ />
       <CTA />
