@@ -26,15 +26,16 @@ interface AdminSidebarProps {
 }
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed }) => {
-  const { logout, accessibleSections, user } = useAuth();
+  const { logout, accessibleSections, user, isLoading } = useAuth();
   const pathname = usePathname() ?? "";
   const navItems = [
-    // {
-    //   name: "Dashboard",
-    //   icon: LayoutDashboard,
-    //   href: "/admin/dashboard",
-    //   section: "dashboard",
-    // },
+    {
+      name: "Dashboard",
+      icon: LayoutDashboard,
+      href: "/admin/dashboard",
+      section: ["dashboard", "orders", "content", "customers", "settings"],
+    },
+
     {
       name: "Content",
       icon: Sparkles,
@@ -150,7 +151,16 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed }) => {
 
         {/* Navigation */}
         <nav className="flex-grow overflow-auto space-y-1">
+          {isLoading && allowedNavItems.length === 0
+            ? Array.from({ length: 7 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-9 rounded-lg bg-muted/50 animate-pulse mb-1"
+                />
+              ))
+            : null}
           {allowedNavItems.map((item) =>
+
             item.children ? (
               <div key={item.name}>
                 <div

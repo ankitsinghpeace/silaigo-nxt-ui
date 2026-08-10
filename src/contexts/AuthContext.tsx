@@ -77,14 +77,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const refreshUser = useCallback(async () => {
-    if (!isAuthenticated) {
-      updateUserState(null);
-      return;
-    }
-
     try {
       const user = await getCurrentUserFromServer();
-      updateUserState(user);
+      updateUserState(user ?? null);
     } catch (error: any) {
       if (error?.status === 401) {
         updateUserState(null);
@@ -92,7 +87,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         console.error(error);
       }
     }
-  }, []);
+  }, [updateUserState]);
+
 
   useEffect(() => {
     const fetchUser = async () => {

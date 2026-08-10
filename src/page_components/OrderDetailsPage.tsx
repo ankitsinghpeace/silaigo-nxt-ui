@@ -177,8 +177,19 @@ const PriceBreakdownPopup = ({
   );
 };
 
-const OrderDetailsPage = () => {
-  const { id } = useRouter().query;
+interface OrderDetailsPageProps {
+  /** When provided the component renders this order instead of reading it from the route. */
+  orderId?: string;
+  /** Renders without page chrome (used inside admin modals). */
+  embedded?: boolean;
+}
+
+const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
+  orderId,
+  embedded = false,
+}) => {
+  const { id: routeId } = useRouter().query;
+  const id = orderId ?? routeId;
   const navigate = useRouter();
   const router = navigate;
   const { toast } = useToast();
@@ -399,9 +410,13 @@ const OrderDetailsPage = () => {
     contentRef: printRef,
   });
 
+  const shellClass = embedded
+    ? "w-full"
+    : "container mx-auto px-4 py-8 max-w-6xl";
+
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-6xl min-h-[60vh] flex items-center justify-center">
+      <div className="w-full py-10 min-h-[40vh] flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-lg text-gray-600">Loading order details...</p>
@@ -434,18 +449,18 @@ const OrderDetailsPage = () => {
     orderData.appointment.status;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className={shellClass}>
       <div className="flex justify-end mb-4 no-print">
         <Button onClick={() => (handlePrint as any)()}>
           <Printer className="w-4 h-4" /> Print Order
         </Button>
       </div>
-      <MetaTagsProvider
+      {!embedded && <MetaTagsProvider
         title={`Order Details - ${orderData.order._id}`}
         description={`View details of your order #${orderData.order._id}`}
         canonicalPath={`/order/${id}`}
         noindex={true}
-      />
+      />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div

@@ -77,6 +77,7 @@ import { tailoringDetails } from "@/services/constants";
 import { MeasurementsModal } from "@/components/admin/modals/MeasurementsModal";
 import EventsOptions from "@/components/admin/EventsOptions";
 import { CreatePickupDialog } from "@/components/admin/CreatePickupDialog";
+import OrderDetailsPage from "@/page_components/OrderDetailsPage";
 import { TabsContent } from "@radix-ui/react-tabs";
 import PickupsPage from "@/components/admin/PickupsPage";
 import { cn } from "@/lib/utils";
@@ -557,6 +558,186 @@ const OrdersPage = () => {
     );
   }, [selectedOrderId, orders, pinnedOrders]);
 
+  const renderOrderManageControls = (order: any) => (
+    <>
+                  {/* Assignment & status controls */}
+                  <div className="rounded-lg border p-4 space-y-4">
+
+                    <h3 className="text-sm font-semibold">Manage Order</h3>
+                    <div className="flex flex-wrap items-end gap-4">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground">
+                          Processing State
+                        </label>
+                        <Select
+                          value={order.orderProcessingState}
+                          onValueChange={(val) =>
+                            updateOrderProcessingState({
+                              orderId: order.id,
+                              nextState: val,
+                            })
+                          }
+                        >
+                          <SelectTrigger className="w-56" disabled={!canEdit}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ORDER_TIMELINE_OPTIONS.map((opt, i) => (
+                              <SelectItem key={i} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground">
+                          Assign Stitching Agent
+                        </label>
+                        <Select
+                          disabled={isAssigningToStitchingAgent || !canEdit}
+                          value={order.assignedToStitchingAgentId || "none"}
+                          onValueChange={(val) =>
+                            assignOrderToStitchingAgent({
+                              orderId: order.id,
+                              agentId: val,
+                            })
+                          }
+                        >
+                          <SelectTrigger className="w-56">
+                            <SelectValue placeholder="Unassigned" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            {teamMembersViaRole?.map((el: any) => (
+                              <SelectItem key={el._id} value={el._id}>
+                                {el.firstName} {el.lastName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {user?.role === UserRole.ADMIN && (
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs text-muted-foreground">
+                            Pin order
+                          </label>
+                          <div className="flex items-center gap-2 h-10">
+                            <Switch
+                              disabled={isUpdatingPin}
+                              checked={!!order.isPinned}
+                              onCheckedChange={(val) => {
+                                const pinPosition = window.prompt("Enter pin position");
+                                pinOrder({
+                                  orderId: order.id,
+                                  pinPosition: Number(pinPosition),
+                                  isPinned: val,
+                                });
+                              }}
+                            />
+                            {isUpdatingPin && (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 pt-2 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setOrderExistingMeasurementData(order.measurements);
+                          orderToEditMeasurement.current = order.id;
+                          setIsMeasurementModalOpen(true);
+                        }}
+                      >
+                        <RulerIcon className="w-4 h-4 mr-1" /> Measurements
+                      </Button>
+                      {user?.role === UserRole.ADMIN && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={isCopyingOrder}
+                          onClick={() => duplicateOrderMutation(order.id)}
+                        >
+                          {isCopyingOrder ? (
+                            <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                          ) : (
+                            <Repeat className="w-4 h-4 mr-1" />
+                          )}
+                          Repeat Order
+                        </Button>
+                      )}
+                      {user?.role === UserRole.ADMIN && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => {
+                            setIsOrderModalOpen(false);
+                            openConfirm(order.id);
+                          }}
+                        >
+                          <Trash className="w-4 h-4 mr-1" /> Delete
+                        </Button>
+                      )}
+                    </div>
+
+                    {user?.role !== UserRole.ADMIN && (
+                      <div className="pt-2 border-t">
+                        <EventsOptions orderId={order.id} />
+                      </div>
+                    )}
+                  </div>
+    </>
+  );
+
+
+
+
+  const pageMetrics = useMemo(() => {
+    const amount = (o: any) => Number(o?.customPrice || o?.productPrice || 0);
+    const total = orders.reduce((s: number, o: any) => s + amount(o), 0);
+    const paid = orders.filter((o: any) =>
+      String(o?.paymentStatus || "").toLowerCase().includes("paid"),
+    );
+    const completed = orders.filter(
+      (o: any) => String(o?.orderStatus || "").toLowerCase() === "completed",
+    ).length;
+    const customers = new Set(
+      orders.map((o: any) => o.customerPhone || o.customerEmail || o.customerName),
+    ).size;
+
+    return [
+      {
+        label: "Orders on page",
+        value: String(orders.length),
+        sub: `${pagination?.total ?? orders.length} total matching`,
+      },
+      {
+        label: "Value",
+        value: `₹${total.toLocaleString()}`,
+        sub: `Avg ₹${orders.length ? Math.round(total / orders.length).toLocaleString() : 0}`,
+      },
+      {
+        label: "Payments",
+        value: `${paid.length}/${orders.length}`,
+        sub: `₹${paid.reduce((s: number, o: any) => s + amount(o), 0).toLocaleString()} collected`,
+      },
+      {
+        label: "Customers",
+        value: String(customers),
+        sub: `${completed} orders completed`,
+      },
+    ];
+  }, [orders, pagination]);
+
+
+
 
 
   const { mutate: updateOrderStatus } = useMutation({
@@ -991,11 +1172,51 @@ const OrdersPage = () => {
       </Dialog>
 
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Orders</h1>
-          <p className="text-muted-foreground">
-            Manage and view customer orders
-          </p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Orders</h1>
+            <p className="text-muted-foreground">
+              Search, filter, assign and update every order without leaving this
+              screen
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={exportAllOrders}
+              disabled={isExporting}
+            >
+              Export CSV {isExporting && <Loader2 className="animate-spin ml-1 h-4 w-4" />}
+            </Button>
+            <Link href={"/admin/create-order"}>
+              <Button type="button">Create New Order</Button>
+            </Link>
+            <CreatePickupDialog />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => refetchOrders()}
+            >
+              Refresh {isPending && <Loader2 className="animate-spin ml-1 h-4 w-4" />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Metrics */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {pageMetrics.map((m) => (
+            <div
+              key={m.label}
+              className="rounded-xl border bg-white/70 backdrop-blur-sm p-4 shadow-sm"
+            >
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                {m.label}
+              </p>
+              <p className="text-2xl font-bold mt-1">{m.value}</p>
+              <p className="text-xs text-muted-foreground mt-1">{m.sub}</p>
+            </div>
+          ))}
         </div>
 
         {fetchError && (
@@ -1004,9 +1225,10 @@ const OrdersPage = () => {
           </div>
         )}
 
-        <div className="p-6 border border-dashed rounded-lg">
+        <div className="p-5 border rounded-xl bg-white/70 backdrop-blur-sm shadow-sm">
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap gap-4 mb-2 items-end">
+
               <div className="flex flex-col">
                 <label className="text-xs text-muted-foreground mb-1">
                   Order Status
@@ -1298,26 +1520,6 @@ const OrdersPage = () => {
                 />
               </div>
 
-              <Button
-                type="button"
-                onClick={exportAllOrders}
-                disabled={isExporting}
-              >
-                Export To CSV{" "}
-                {isExporting && <Loader2 className="animate-spin" />}
-              </Button>
-              <Link href={"/admin/create-order"}>
-                <Button type="button">Create New Order</Button>
-              </Link>
-              <CreatePickupDialog />
-              <Button
-                type="button"
-                onClick={() => {
-                  refetchOrders();
-                }}
-              >
-                Refresh {isPending && <Loader2 className="animate-spin" />}
-              </Button>
             </div>
 
             <div className="flex gap-2 w-full flex-col md:flex-row">
@@ -1525,14 +1727,14 @@ const OrdersPage = () => {
                                   {order.pinPosition}
                                 </TableCell>
                                 <TableCell className="font-mono text-sm align-top">
-                                  <Link
-                                    href={`/order/${order.id}`}
-                                    target="blank"
+                                  <button
+                                    type="button"
+                                    onClick={() => openOrderModal(order.id)}
                                     className="inline-flex items-center gap-1 underline text-blue-500 hover:text-blue-700"
                                   >
-                                    {order.orderId}{" "}
-                                    <ExternalLink className="w-3 h-3" />
-                                  </Link>
+                                    {order.orderId}
+                                  </button>
+
                                 </TableCell>
                                 <TableCell className="font-medium align-top">
                                   {order.customerName}
@@ -2026,14 +2228,14 @@ const OrdersPage = () => {
                               />
                             </TableCell>
                             <TableCell className="font-mono text-sm align-top">
-                              <Link
-                                href={`/order/${order.id}`}
-                                target="blank"
+                              <button
+                                type="button"
+                                onClick={() => openOrderModal(order.id)}
                                 className="inline-flex items-center gap-1 underline text-blue-500 hover:text-blue-700"
                               >
-                                {order.orderId}{" "}
-                                <ExternalLink className="w-3 h-3" />
-                              </Link>
+                                {order.orderId}
+                              </button>
+
                             </TableCell>
                             <TableCell className="font-medium align-top">
                               {order.customerName}
@@ -2322,7 +2524,7 @@ const OrdersPage = () => {
       <Dialog open={isCustomerModalOpen} onOpenChange={setIsCustomerModalOpen}>
         <DialogPortal>
           <DialogOverlay className="fixed inset-0 bg-black/50 z-50" />
-          <DialogContent className="fixed top-1/2 left-1/2 z-50 w-full max-w-4xl max-h-[90vh] -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-lg shadow-lg overflow-y-auto">
+          <DialogContent className="fixed top-1/2 left-1/2 z-50 w-full max-w-6xl max-h-[92vh] -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-lg shadow-lg overflow-y-auto">
             {selectedCustomer && (
               <div className="space-y-6">
                 {/* Customer Header */}
@@ -2386,78 +2588,102 @@ const OrdersPage = () => {
                   </div>
                 </div>
 
-                {/* Orders List */}
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">
-                    Orders ({selectedCustomer.orders.length})
-                  </h3>
-                  <div className="rounded-lg border divide-y overflow-hidden">
+                {/* Orders: summary + one tab per order */}
+                <Tabs defaultValue="summary" className="w-full">
+                  <TabsList className="mb-4 flex flex-wrap justify-start gap-1 border-b border-gray-200 bg-transparent p-0 h-auto">
+                    <TabsTrigger
+                      value="summary"
+                      className="px-3 py-2 text-sm font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0"
+                    >
+                      Summary ({selectedCustomer.orders.length})
+                    </TabsTrigger>
                     {selectedCustomer.orders.map((order: any) => (
-                      <div
+                      <TabsTrigger
                         key={order.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => openOrderModal(order.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") openOrderModal(order.id);
-                        }}
-                        className="grid grid-cols-12 gap-3 items-center px-4 py-3 hover:bg-muted/50 cursor-pointer text-sm"
+                        value={order.id}
+                        className="px-3 py-2 text-xs font-mono text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0"
                       >
-                        <div className="col-span-12 md:col-span-3 min-w-0">
-                          <div className="font-mono text-xs text-blue-600 truncate">
-                            {order.orderId}
-                          </div>
-                          <div className="font-medium truncate">
-                            {order.productName}
-                          </div>
-                        </div>
-                        <div className="col-span-6 md:col-span-3 min-w-0">
-                          <div className="text-[11px] text-muted-foreground">
-                            Delivery
-                          </div>
-                          <div className="truncate">
-                            {order.appointmentDate &&
-                            !isNaN(new Date(order.appointmentDate).getTime())
-                              ? format(
-                                  new Date(order.appointmentDate),
-                                  "dd MMM yyyy",
-                                )
-                              : "N/A"}
-                            {order.appointmentTime
-                              ? ` · ${order.appointmentTime}`
-                              : ""}
-                          </div>
-                        </div>
-                        <div className="col-span-3 md:col-span-2">
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary capitalize">
-                            {order.orderProcessingState?.replace(/_/g, " ")}
-                          </span>
-                        </div>
-                        <div className="col-span-3 md:col-span-2">
-                          <span
-                            className={cn(
-                              "text-xs px-2 py-0.5 rounded-full border",
-                              getPaymentStatusBadgeColor(order.paymentStatus).bg,
-                              getPaymentStatusBadgeColor(order.paymentStatus).text,
-                              getPaymentStatusBadgeColor(order.paymentStatus)
-                                .border,
-                            )}
-                          >
-                            {getPaymentStatusDisplayText(order.paymentStatus)}
-                          </span>
-                        </div>
-                        <div className="col-span-12 md:col-span-2 md:text-right font-semibold">
-                          ₹
-                          {(
-                            order.customPrice ||
-                            order.productPrice ||
-                            0
-                          ).toLocaleString()}
-                        </div>
-                      </div>
+                        {order.orderId}
+                      </TabsTrigger>
                     ))}
-                  </div>
-                </div>
+                  </TabsList>
+
+                  <TabsContent value="summary" className="focus:outline-none">
+                    <div className="rounded-lg border divide-y overflow-hidden">
+                      {selectedCustomer.orders.map((order: any) => (
+                        <div
+                          key={order.id}
+                          className="grid grid-cols-12 gap-3 items-center px-4 py-3 hover:bg-muted/50 text-sm"
+                        >
+                          <div className="col-span-12 md:col-span-3 min-w-0">
+                            <div className="font-mono text-xs text-blue-600 truncate">
+                              {order.orderId}
+                            </div>
+                            <div className="font-medium truncate">
+                              {order.productName}
+                            </div>
+                          </div>
+                          <div className="col-span-6 md:col-span-3 min-w-0">
+                            <div className="text-[11px] text-muted-foreground">
+                              Delivery
+                            </div>
+                            <div className="truncate">
+                              {order.appointmentDate &&
+                              !isNaN(new Date(order.appointmentDate).getTime())
+                                ? format(
+                                    new Date(order.appointmentDate),
+                                    "dd MMM yyyy",
+                                  )
+                                : "N/A"}
+                              {order.appointmentTime
+                                ? ` · ${order.appointmentTime}`
+                                : ""}
+                            </div>
+                          </div>
+                          <div className="col-span-3 md:col-span-2">
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary capitalize">
+                              {order.orderProcessingState?.replace(/_/g, " ")}
+                            </span>
+                          </div>
+                          <div className="col-span-3 md:col-span-2">
+                            <span
+                              className={cn(
+                                "text-xs px-2 py-0.5 rounded-full border",
+                                getPaymentStatusBadgeColor(order.paymentStatus).bg,
+                                getPaymentStatusBadgeColor(order.paymentStatus).text,
+                                getPaymentStatusBadgeColor(order.paymentStatus)
+                                  .border,
+                              )}
+                            >
+                              {getPaymentStatusDisplayText(order.paymentStatus)}
+                            </span>
+                          </div>
+                          <div className="col-span-12 md:col-span-2 md:text-right font-semibold">
+                            ₹
+                            {(
+                              order.customPrice ||
+                              order.productPrice ||
+                              0
+                            ).toLocaleString()}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </TabsContent>
+
+                  {selectedCustomer.orders.map((order: any) => (
+                    <TabsContent
+                      key={order.id}
+                      value={order.id}
+                      className="space-y-4 focus:outline-none"
+                    >
+                      {renderOrderManageControls(order)}
+                      <div className="rounded-lg border bg-muted/20 p-2">
+                        <OrderDetailsPage orderId={order.id} embedded />
+                      </div>
+                    </TabsContent>
+                  ))}
+                </Tabs>
 
 
                 {/* Summary */}
@@ -2498,13 +2724,10 @@ const OrdersPage = () => {
                       <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium capitalize">
                         {selectedOrder.orderProcessingState?.replace(/_/g, " ")}
                       </span>
-                      <Link
-                        href={`/order/${selectedOrder.id}`}
-                        target="blank"
-                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                      >
-                        Open full page <ExternalLink className="w-3 h-3" />
-                      </Link>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium capitalize">
+                        {selectedOrder.orderStatus?.replace(/_/g, " ") || "—"}
+                      </span>
+
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
                       {selectedOrder.customerName} ·{" "}
@@ -2520,8 +2743,33 @@ const OrdersPage = () => {
                   </Button>
                 </div>
 
-                <div className="overflow-y-auto px-6 py-5 space-y-6">
+                <div className="overflow-y-auto px-6 py-5">
+                  <Tabs
+                    key={selectedOrder.id}
+                    defaultValue="overview"
+                    className="w-full"
+                  >
+                  <TabsList className="mb-5 border-b border-gray-200 bg-transparent p-0 h-auto w-full justify-start gap-1">
+                    {[
+                      { value: "overview", label: "Overview" },
+                      { value: "manage", label: "Manage" },
+                      { value: "details", label: "Full Details" },
+                      { value: "measurements", label: "Measurements" },
+                      { value: "timeline", label: "Timeline" },
+                    ].map((t) => (
+                      <TabsTrigger
+                        key={t.value}
+                        value={t.value}
+                        className="px-4 py-2 text-sm font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0"
+                      >
+                        {t.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+
+                  <TabsContent value="overview" className="space-y-6 focus:outline-none">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+
                     {[
                       { label: "Product", value: selectedOrder.productName || "—" },
                       {
@@ -2573,143 +2821,23 @@ const OrdersPage = () => {
                       </div>
                     ))}
                   </div>
+                  </TabsContent>
 
-                  {/* Assignment & status controls */}
-                  <div className="rounded-lg border p-4 space-y-4">
-                    <h3 className="text-sm font-semibold">Manage Order</h3>
-                    <div className="flex flex-wrap items-end gap-4">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs text-muted-foreground">
-                          Processing State
-                        </label>
-                        <Select
-                          value={selectedOrder.orderProcessingState}
-                          onValueChange={(val) =>
-                            updateOrderProcessingState({
-                              orderId: selectedOrder.id,
-                              nextState: val,
-                            })
-                          }
-                        >
-                          <SelectTrigger className="w-56" disabled={!canEdit}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ORDER_TIMELINE_OPTIONS.map((opt, i) => (
-                              <SelectItem key={i} value={opt.value}>
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                  <TabsContent value="manage" className="space-y-6 focus:outline-none">
+                  {renderOrderManageControls(selectedOrder)}
+                  </TabsContent>
 
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs text-muted-foreground">
-                          Assign Stitching Agent
-                        </label>
-                        <Select
-                          disabled={isAssigningToStitchingAgent || !canEdit}
-                          value={selectedOrder.assignedToStitchingAgentId || "none"}
-                          onValueChange={(val) =>
-                            assignOrderToStitchingAgent({
-                              orderId: selectedOrder.id,
-                              agentId: val,
-                            })
-                          }
-                        >
-                          <SelectTrigger className="w-56">
-                            <SelectValue placeholder="Unassigned" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">None</SelectItem>
-                            {teamMembersViaRole?.map((el: any) => (
-                              <SelectItem key={el._id} value={el._id}>
-                                {el.firstName} {el.lastName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {user?.role === UserRole.ADMIN && (
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs text-muted-foreground">
-                            Pin order
-                          </label>
-                          <div className="flex items-center gap-2 h-10">
-                            <Switch
-                              disabled={isUpdatingPin}
-                              checked={!!selectedOrder.isPinned}
-                              onCheckedChange={(val) => {
-                                const pinPosition = window.prompt("Enter pin position");
-                                pinOrder({
-                                  orderId: selectedOrder.id,
-                                  pinPosition: Number(pinPosition),
-                                  isPinned: val,
-                                });
-                              }}
-                            />
-                            {isUpdatingPin && (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            )}
-                          </div>
-                        </div>
-                      )}
+                  <TabsContent value="details" className="focus:outline-none">
+                    <div className="rounded-lg border bg-muted/20 p-2">
+                      <OrderDetailsPage orderId={selectedOrder.id} embedded />
                     </div>
+                  </TabsContent>
 
-                    <div className="flex flex-wrap gap-2 pt-2 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setOrderExistingMeasurementData(selectedOrder.measurements);
-                          orderToEditMeasurement.current = selectedOrder.id;
-                          setIsMeasurementModalOpen(true);
-                        }}
-                      >
-                        <RulerIcon className="w-4 h-4 mr-1" /> Measurements
-                      </Button>
-                      {user?.role === UserRole.ADMIN && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={isCopyingOrder}
-                          onClick={() => duplicateOrderMutation(selectedOrder.id)}
-                        >
-                          {isCopyingOrder ? (
-                            <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                          ) : (
-                            <Repeat className="w-4 h-4 mr-1" />
-                          )}
-                          Repeat Order
-                        </Button>
-                      )}
-                      {user?.role === UserRole.ADMIN && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 border-red-200 hover:bg-red-50"
-                          onClick={() => {
-                            setIsOrderModalOpen(false);
-                            openConfirm(selectedOrder.id);
-                          }}
-                        >
-                          <Trash className="w-4 h-4 mr-1" /> Delete
-                        </Button>
-                      )}
-                    </div>
-
-                    {user?.role !== UserRole.ADMIN && (
-                      <div className="pt-2 border-t">
-                        <EventsOptions orderId={selectedOrder.id} />
-                      </div>
-                    )}
-                  </div>
-
+                  <TabsContent value="measurements" className="space-y-6 focus:outline-none">
                   {/* Measurements */}
                   {selectedOrder.measurements && (
                     <div className="rounded-lg border p-4">
+
                       <h3 className="text-sm font-semibold mb-3">Measurements</h3>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                         {Object.entries(
@@ -2725,15 +2853,29 @@ const OrdersPage = () => {
                       </div>
                     </div>
                   )}
+                  {!selectedOrder.measurements && (
+                    <p className="text-sm text-muted-foreground">
+                      No measurements captured for this order yet.
+                    </p>
+                  )}
+                  </TabsContent>
 
-                  {/* Timeline */}
-                  {selectedOrder.timeLine?.length > 0 && (
+                  <TabsContent value="timeline" className="space-y-6 focus:outline-none">
+                  {selectedOrder.timeLine?.length > 0 ? (
                     <div className="rounded-lg border p-4">
                       <h3 className="text-sm font-semibold mb-3">Timeline</h3>
                       <OrderTimelineView timeline={selectedOrder.timeLine} />
                     </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No timeline events yet.
+                    </p>
                   )}
+                  </TabsContent>
+                </Tabs>
                 </div>
+
+
               </>
             ) : null}
           </DialogContent>

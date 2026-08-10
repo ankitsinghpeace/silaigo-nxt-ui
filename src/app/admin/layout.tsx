@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { OrderFlowProvider } from "@/contexts/OrderFlowContext";
+import AdminGuard from "@/components/admin/AdminGuard";
 import React, { Suspense } from "react";
 
 const queryClient = new QueryClient({
@@ -32,7 +33,7 @@ export default function AdminLayout({
         <Suspense fallback={null}>
           <AuthProvider>
             <OrderFlowProvider>
-              {children}
+              <AdminGuard>{children}</AdminGuard>
             </OrderFlowProvider>
             <Toaster />
             <Sonner />
