@@ -1,0 +1,41 @@
+{
+  "summary": "Second round frontend-only E2E testing of the SILAIGO admin post z-index/dropdown fix and new Dashboard tabs / PDF export / PickupsPage key-warning fix. All targeted fixes verified working: Table View single-order modal dropdowns (Processing State, Order Status, Assign Stitching Agent) now open with z-index:50 and are clickable (topElement is the option itself). Customer View per-order tabs render AdminOrderDetailView with the same dropdowns AND nested dialogs (Update Customisations opens a second [role=dialog] whose center point is contained by the top dialog, i.e. not clipped). Dashboard has 3 tabs (Overview + new Team Workload + Customer Demographics), Overview shows the new 'Order Pipeline - where things are stuck' snapshot card. Pickups tab produced zero React 'unique key' warnings. Export PDF button ([data-testid=export-customer-pdf-btn]) is present in the customer modal header and triggered a real download 'Charu_orders.pdf'. No page crashes or console errors across Orders/Customers/Dashboard/Pickups.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "tests_executed": [
+    "Login admin@silaigo.com/admin123 -> /admin/dashboard OK",
+    "Dashboard tabs = ['Overview','Team Workload','Customer Demographics']; Overview contains 'Pipeline' snapshot card (0/4/0/12/12/15/0/0/0/6 stage counts rendered)",
+    "Team Workload tab loads (empty-state expected per BACKEND_CHANGES_NEEDED item 1b)",
+    "Customer Demographics tab loads without crash",
+    "Orders page Table View -> click order 04SS0805 -> AdminOrderDetailView modal opens",
+    "order-processing-state-select: 10 options, zIndex=50, elementFromPoint clickable=True",
+    "order-status-select: 2 options, clickable=True",
+    "order-assign-agent-select: 4 options, clickable=True",
+    "Customer View -> View on customer 'Charu' -> modal tabs = ['Summary (3)','04SS0805','01DYO0802','08SKW0801']",
+    "Header 'Export PDF' button present (data-testid=export-customer-pdf-btn)",
+    "Per-order tab '04SS0805' renders admin-order-detail-view=1, Update Customisations=1, Update Options=1, Measurements=1",
+    "Per-order Processing State dropdown: 10 options, clickable=True (z-index bug fix confirmed for customer modal path too)",
+    "Update Customisations nested dialog opens: dialogCount=2, topZ=50, topContains(centerPoint)=True (not behind parent modal)",
+    "Export PDF click -> download 'Charu_orders.pdf' completed",
+    "Pickups tab loaded - 0 React 'unique key' warnings captured on console",
+    "No console errors other than expected 401 on unauth probe pre-login and preload/scroll-behavior warnings"
+  ],
+  "test_report_links": [".screenshots/dashboard.png", ".screenshots/order_detail.png", ".screenshots/cust_v2.png"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Backend at /app/backend/server.py is still a transparent reverse proxy to api.silaigo.com forwarding cookies - safe for the intended dev setup but should never be re-pointed at a shared upstream.",
+    "Consider guarding destructive actions (Delete order) when NEXT_PUBLIC_API_URL points to production api.silaigo.com to prevent accidental data loss from the admin preview."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "test_credentials": "admin@silaigo.com / admin123 (ADMIN) - matched /app/memory/test_credentials.md",
+  "seed_data_creation": "None. No mutating actions performed this round - Processing State/Order Status/Assign Agent dropdowns were only opened and then dismissed with Escape (no option selected/persisted). No Pin toggles, no status writes, no SMS notify. Nothing to revert on production api.silaigo.com.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Both the z-index dropdown bug (was z-[60]/z-[61] vs z-50 Radix popovers) and the PickupsPage React key warning are FIXED. Dashboard now has 3 tabs; Team Workload legitimately shows empty state until backend adds order timeline/audit-trail (see /app/memory/BACKEND_CHANGES_NEEDED.md 1b) - do NOT report as bug. Customer modal has [data-testid=export-customer-pdf-btn] that downloads combined multi-order PDF (verified: Charu_orders.pdf). SMS notify /orders/:id/notify still 404 - expected. Frontend is Next.js at /app root, backend is /app/backend/server.py (reverse proxy).",
+  "rca of the issue": "Prev iteration report flagged that in the AdminOrderDetailView, Select popovers and nested dialogs were rendering BEHIND the parent modal because parent DialogOverlay/DialogContent used z-[60]/z-[61] while Radix Select/Dialog descendants default to z-50, so descendants stacked below the parent. Fix (verified this run): remove the z-[60]/z-[61] override on the modal so parent + descendants all use z-50; Radix relies on DOM mount order to correctly layer later-mounted popovers on top, which now works (dropdown zIndex=50, elementFromPoint returns the option; nested dialog centerPoint is contained by the topmost [role=dialog])."
+}

@@ -73,6 +73,26 @@ See `/app/memory/BACKEND_CHANGES_NEEDED.md`:
 3. New endpoint `POST /orders/:id/notify` for SMS stage updates (MSG91).
 4. Nice-to-have: `processingState` filter param on `/orders/all` for efficient role queues at scale.
 
+## What's been implemented (2026-08-13, follow-up bug-fix round)
+- **Fixed critical z-index/modal-stacking bug**: the single-order detail modal used
+  `z-[60]`/`z-[61]` while Radix Select dropdowns and nested dialogs (Update Customisations/
+  Options/Measurements) default to `z-50` — so they rendered BEHIND the modal, making
+  dropdowns look unclickable and nested dialogs invisible. Fixed by aligning the modal back
+  to `z-50` (consistent with the Customer modal), relying on Radix's DOM-mount-order stacking.
+  Verified via testing_agent: dropdowns now open on top and nested dialogs render correctly.
+- Fixed `PickupsPage.tsx` React "unique key" console warning (key moved from inner `TableRow`
+  to a wrapping `React.Fragment`).
+- **Dashboard now has 3 tabs**: Overview (existing charts + new "Order Pipeline" stage-count
+  snapshot card), Team Workload (NEW — computes time-per-teammate from order `timeLine`
+  transitions; currently shows an honest empty state since the backend doesn't provide
+  `timeLine` data at all yet — see BACKEND_CHANGES_NEEDED.md item 1b), Customer Demographics
+  (NEW — order-frequency pie chart + top repeat customers table).
+- **Multi-order customer PDF export**: new "Export PDF" button in the Orders → Customer View
+  modal header generates one combined, well-organised PDF covering all of a customer's orders
+  (summary table + per-order style/customisations/measurements/address sections) via
+  `downloadCustomerOrdersPdf.ts` (jsPDF + autoTable).
+- Verified via testing_agent (100% pass, no destructive mutations needed reverting this round).
+
 ## Prioritized backlog / next tasks
 - P1: Backend team to implement the 4 items above — once done, revisit Orders/Customers list-level
   metrics (Value/Payments cards currently show ₹0 due to missing list fields) and make customer

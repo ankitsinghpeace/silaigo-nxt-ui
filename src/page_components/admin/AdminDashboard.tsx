@@ -33,6 +33,10 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import TeamWorkloadPanel from "@/components/admin/TeamWorkloadPanel";
+import CustomerDemographicsPanel from "@/components/admin/CustomerDemographicsPanel";
+import { STAGE_LABELS, PROCESSING_STAGE_SEQUENCE } from "@/lib/orderStageConfig";
 
 const staticTiles = [
   {
@@ -163,6 +167,25 @@ const AdminDashboard = () => {
       .slice(0, 6);
   }, [orders]);
 
+  const pipeline = useMemo(() => {
+    const counts: Record<string, number> = {};
+    orders.forEach((o) => {
+      const s = o.orderProcessingState;
+      if (!s) return;
+      counts[s] = (counts[s] || 0) + 1;
+    });
+    return PROCESSING_STAGE_SEQUENCE.map((stage) => ({
+      stage,
+      label: STAGE_LABELS[stage],
+      count: counts[stage] || 0,
+    }));
+  }, [orders]);
+
+  const workloadOrderIds = useMemo(
+    () => orders.slice(0, 40).map((o) => o.id),
+    [orders],
+  );
+
   const statCards = [
     {
       label: "Total Revenue",
@@ -238,6 +261,42 @@ const AdminDashboard = () => {
             </Card>
           ))}
         </div>
+
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="mb-2 border-b border-gray-200 bg-transparent p-0 h-auto w-full justify-start gap-1">
+            {[
+              { value: "overview", label: "Overview" },
+              { value: "workload", label: "Team Workload" },
+              { value: "customers", label: "Customer Demographics" },
+            ].map((t) => (
+              <TabsTrigger
+                key={t.value}
+                value={t.value}
+                className="px-4 py-2 text-sm font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0"
+                data-testid={`dashboard-tab-${t.value}`}
+              >
+                {t.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-4 focus:outline-none">
+        {/* Pipeline snapshot */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Order Pipeline — where things are stuck</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              {pipeline.map((p) => (
+                <div key={p.stage} className="rounded-lg border bg-muted/30 p-3" data-testid={`pipeline-stage-${p.stage}`}>
+                  <div className="text-2xl font-bold">{p.count}</div>
+                  <div className="text-[11px] text-muted-foreground leading-tight mt-1">{p.label}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Charts */}
         <div className="grid gap-4 lg:grid-cols-3">
@@ -387,6 +446,16 @@ const AdminDashboard = () => {
             </ul>
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="workload" className="focus:outline-none">
+            <TeamWorkloadPanel orderIds={workloadOrderIds} />
+          </TabsContent>
+
+          <TabsContent value="customers" className="focus:outline-none">
+            <CustomerDemographicsPanel />
+          </TabsContent>
+        </Tabs>
       </div>
     </AdminLayout>
   );

@@ -14,6 +14,7 @@ import {
   assignStitchingAgent,
   copyOrderApi,
   getAllOrders,
+  getOrderByIdApi,
   updateOrderMeasurementsApi,
   addToPinnedOrders,
   updateOrdersProcessingState,
@@ -21,6 +22,7 @@ import {
   updateOrderTimeLineApi,
   updateOrderStatusBulkApi,
 } from "@/services/modules/orders.api";
+import { downloadCustomerOrdersPDF } from "@/lib/downloadCustomerOrdersPdf";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Table,
@@ -50,6 +52,7 @@ import {
   RulerIcon,
   PencilIcon,
   Repeat,
+  FileDown,
 } from "lucide-react";
 import { generateErrorMessage } from "@/lib/helpers";
 import {
@@ -257,6 +260,7 @@ const OrdersPage = () => {
   const [viewMode, setViewMode] = useState<"table" | "customer">("customer");
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [isExportingCustomerPdf, setIsExportingCustomerPdf] = useState(false);
   const [expandedCustomers, setExpandedCustomers] = useState<string[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
@@ -603,6 +607,32 @@ const OrdersPage = () => {
       }}
     />
   );
+
+  const handleExportCustomerPdf = async () => {
+    if (!selectedCustomer?.orders?.length) return;
+    setIsExportingCustomerPdf(true);
+    try {
+      const details = await Promise.all(
+        selectedCustomer.orders.map((o: any) => getOrderByIdApi(o.id)),
+      );
+      await downloadCustomerOrdersPDF(
+        {
+          name: selectedCustomer.customerName,
+          phone: selectedCustomer.customerPhone,
+        },
+        details,
+      );
+      toast({ title: "PDF ready", description: "Customer order summary downloaded." });
+    } catch (error) {
+      toast({
+        title: "Couldn't generate PDF",
+        description: generateErrorMessage(error),
+        variant: "destructive",
+      });
+    } finally {
+      setIsExportingCustomerPdf(false);
+    }
+  };
 
 
 
@@ -2460,24 +2490,41 @@ const OrdersPage = () => {
               <div className="space-y-6">
                 {/* Customer Header */}
                 <div className="border-b pb-4">
-                  <div className="flex items-start gap-4">
-                    <div className="h-14 w-14 shrink-0 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-semibold">
-                      {(selectedCustomer.customerName || "?")
-                        .trim()
-                        .charAt(0)
-                        .toUpperCase()}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-4 min-w-0">
+                      <div className="h-14 w-14 shrink-0 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-semibold">
+                        {(selectedCustomer.customerName || "?")
+                          .trim()
+                          .charAt(0)
+                          .toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h2 className="text-2xl font-bold truncate">
+                          {selectedCustomer.customerName}
+                        </h2>
+                        <p className="text-muted-foreground text-sm truncate">
+                          {selectedCustomer.customerPhone || "—"}
+                          {selectedCustomer.customerEmail
+                            ? ` · ${selectedCustomer.customerEmail}`
+                            : ""}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <h2 className="text-2xl font-bold truncate">
-                        {selectedCustomer.customerName}
-                      </h2>
-                      <p className="text-muted-foreground text-sm truncate">
-                        {selectedCustomer.customerPhone || "—"}
-                        {selectedCustomer.customerEmail
-                          ? ` · ${selectedCustomer.customerEmail}`
-                          : ""}
-                      </p>
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      disabled={isExportingCustomerPdf}
+                      onClick={handleExportCustomerPdf}
+                      data-testid="export-customer-pdf-btn"
+                    >
+                      {isExportingCustomerPdf ? (
+                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      ) : (
+                        <FileDown className="w-4 h-4 mr-1" />
+                      )}
+                      Export PDF
+                    </Button>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
@@ -2639,8 +2686,8 @@ const OrdersPage = () => {
       {/* Single Order Detail Modal */}
       <Dialog open={isOrderModalOpen} onOpenChange={setIsOrderModalOpen}>
         <DialogPortal>
-          <DialogOverlay className="fixed inset-0 bg-black/60 z-[60]" />
-          <DialogContent className="fixed top-1/2 left-1/2 z-[61] w-full max-w-5xl max-h-[92vh] -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col">
+          <DialogOverlay className="fixed inset-0 bg-black/60 z-50" />
+          <DialogContent className="fixed top-1/2 left-1/2 z-50 w-full max-w-5xl max-h-[92vh] -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col">
             {selectedOrder ? (
               <>
                 <div className="flex items-start justify-between gap-4 border-b px-6 py-4 bg-muted/30">

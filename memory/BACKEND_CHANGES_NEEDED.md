@@ -26,6 +26,33 @@ cannot be fixed without this backend change.**
 already exist on `GET /orders/:id`, so this should be a projection change,
 not new data modelling).
 
+## 1b. `timeLine` doesn't exist ANYWHERE yet (confirmed on `/orders/:id` too)
+
+Checked 5+ live orders via `GET /orders/:id` — the `order` object never has a
+`timeLine` field at all (not just missing from the list projection like #1 —
+it simply isn't being written when an order's `status`/processing state
+changes).
+
+**Impact today:** The "Order Timeline" section in the admin order view and
+the new "Team Workload" dashboard tab (which computes time-per-teammate from
+timeline transitions) **cannot show anything** — this isn't a frontend bug,
+there's no data to read. The frontend is built and ready; it needs:
+
+```
+order.timeLine = [
+  { status: "ORDER_FULFILLED", timeStamp: "2026-08-10T10:00:00Z", updatedBy: "Priya (Cutting)", updatedByUserId: "..." },
+  { status: "CUTTING_END", timeStamp: "2026-08-11T15:30:00Z", updatedBy: "Priya (Cutting)", updatedByUserId: "..." },
+  ...
+]
+```
+
+**Ask:** every time `orderProcessingState` or `status` changes (via any of
+the existing update endpoints), append an entry to `order.timeLine` with
+`{status, timeStamp, updatedBy, updatedByUserId}`, and return `timeLine` on
+`GET /orders/:id` (and ideally `/orders/all` too, for the list-level
+Timeline tab). This one change unlocks both the Timeline view and the Team
+Workload analytics tab with zero frontend changes.
+
 ## 2. `GET /auth/customers` is missing order stats
 
 Missing: `orderCount`, `totalSpent`, `lastOrderDate` (or similar aggregated

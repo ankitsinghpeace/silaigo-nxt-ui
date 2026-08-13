@@ -194,9 +194,8 @@ export default function PickupsPage() {
               <tbody>
                 {pickups.length > 0 &&
                   pickups.map((pickup: any) => (
-                    <>
+                    <React.Fragment key={pickup._id}>
                       <TableRow
-                        key={pickup._id}
                         className="align-top border-b-0"
                       >
                         <TableCell className="p-3 align-top">
@@ -295,7 +294,7 @@ export default function PickupsPage() {
                           />
                         </TableCell>
                       </TableRow>
-                    </>
+                    </React.Fragment>
                   ))}
               </tbody>
             </Table>

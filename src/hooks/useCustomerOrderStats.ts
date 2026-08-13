@@ -4,6 +4,7 @@ import { getAllOrders } from "@/services/modules/orders.api";
 export interface CustomerOrderStat {
   count: number;
   lastOrderDate?: string;
+  name?: string;
 }
 
 /**
@@ -37,6 +38,7 @@ export function useCustomerOrderStats() {
           if (!key) return;
           if (!map[key]) map[key] = { count: 0 };
           map[key].count += 1;
+          map[key].name = o.customerName || map[key].name;
           if (
             o.orderDate &&
             (!map[key].lastOrderDate ||
