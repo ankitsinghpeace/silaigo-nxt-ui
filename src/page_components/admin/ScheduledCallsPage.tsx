@@ -98,6 +98,9 @@ const ScheduledCallsPage = () => {
   };
   const [searchField, setSearchField] = useState(SEARCH_FIELDS[0].value);
   const [searchValue, setSearchValue] = useState("");
+  const queryString = new URLSearchParams(
+    searchParams as Record<string, string>,
+  ).toString();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -155,7 +158,7 @@ const ScheduledCallsPage = () => {
     error: fetchError,
     refetch: refetchCallsList,
   } = useQuery({
-    queryKey: ["scheduled-calls", searchParams.toString()],
+    queryKey: ["scheduled-calls", queryString],
     queryFn: () => getScheduledCallsList(searchParams),
   });
 
@@ -175,7 +178,7 @@ const ScheduledCallsPage = () => {
         });
 
         queryClient.setQueryData(
-          ["scheduled-calls", searchParams.toString()],
+          ["scheduled-calls", queryString],
           (oldData: any) => {
             if (!oldData) return oldData;
 

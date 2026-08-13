@@ -60,6 +60,9 @@ const BlogList = () => {
   };
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedBlog, setSelectedBlog] = useState<IBlog | null>(null);
+  const queryString = new URLSearchParams(
+    searchParams as Record<string, string>,
+  ).toString();
   const selectedCategory = searchParams.category || "";
   const search = searchParams.title || "";
   const page = parseInt(searchParams.page || "1", 10);
@@ -78,7 +81,7 @@ const BlogList = () => {
 
   const { data, isLoading, isError, error, refetch, isFetching } =
     useQuery<BlogListResponse>({
-      queryKey: ["blogs", searchParams.toString()],
+      queryKey: ["blogs", queryString],
       queryFn: async () => {
         if (!canView) {
           return Promise.reject(

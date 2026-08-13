@@ -78,10 +78,13 @@ const BlogPage = () => {
   const selectedCategory = searchParams.category || "";
   const search = searchParams.title || "";
   const page = parseInt(searchParams.page || "1", 10);
+  const queryString = new URLSearchParams(
+    searchParams as Record<string, string>,
+  ).toString();
 
   const { data, isLoading, isError, error, refetch, isFetching } =
     useQuery<BlogListResponse>({
-      queryKey: ["blogs", searchParams.toString()],
+      queryKey: ["blogs", queryString],
       queryFn: async () => {
         return await getBlogs(searchParams);
       },

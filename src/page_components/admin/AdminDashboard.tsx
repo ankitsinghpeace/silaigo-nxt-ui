@@ -82,7 +82,7 @@ const AdminDashboard = () => {
     queryKey: ["admin-dashboard-orders"],
     queryFn: () =>
       getAllOrders(
-        new URLSearchParams({ page: "1", limit: "200", sortBy: "newest" }).toString(),
+        new URLSearchParams({ page: "1", limit: "100", sortBy: "newest" }).toString(),
       ),
     staleTime: 1000 * 60 * 5,
     retry: 0,
@@ -96,7 +96,9 @@ const AdminDashboard = () => {
       .filter(isPaid)
       .reduce((s, o) => s + orderAmount(o), 0);
     const completed = orders.filter(
-      (o) => String(o.orderStatus || "").toLowerCase() === "completed",
+      (o) =>
+        String(o.orderStatus || "").toLowerCase() === "completed" ||
+        o.orderProcessingState === "ORDER_COMPLETE",
     ).length;
     const pending = orders.length - completed;
     const customers = new Set(

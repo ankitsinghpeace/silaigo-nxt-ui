@@ -346,3 +346,22 @@ export const getAddressViaPhone = async (phone: string) => {
   });
   return res.data;
 };
+
+/**
+ * Sends a customer-facing status update SMS (via MSG91 on the backend).
+ *
+ * PENDING BACKEND: `POST /orders/:id/notify` does not exist yet — see
+ * BACKEND_CHANGES_NEEDED.md. Once added, this call starts working with no
+ * frontend changes required.
+ */
+export const notifyOrderApi = async (
+  orderId: string,
+  stage: "picked_up" | "ready" | "dispatched" | "delivered",
+) => {
+  const res = await apiFetch<any>(`orders/${orderId}/notify`, {
+    method: "POST",
+    body: { stage },
+    auth: true,
+  });
+  return res.data;
+};

@@ -59,6 +59,7 @@ import { downloadInvoicePDF } from "@/lib/downloadInvoicePdf";
 import { CreatePickupDialog } from "@/components/admin/CreatePickupDialog";
 import { colorCodeArray } from "@/services/constants";
 import { useRouter } from "@/lib/next-router-compat";
+import { useCustomerOrderStats } from "@/hooks/useCustomerOrderStats";
 
 const SEARCH_FIELDS = [
   { value: "search", label: "Name/Email/Phone/Notes/General" },
@@ -111,6 +112,9 @@ const CustomersPage = () => {
   };
   const [searchField, setSearchField] = useState(SEARCH_FIELDS[0].value);
   const [searchValue, setSearchValue] = useState("");
+  const queryString = new URLSearchParams(
+    searchParams as Record<string, string>,
+  ).toString();
   const [selectedCustomers, setSelectedCustomers] = useState<any>([]);
   const { toast } = useToast();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -176,12 +180,13 @@ const CustomersPage = () => {
     error: fetchError,
     refetch: refetchCustomerList,
   } = useQuery({
-    queryKey: ["customers", searchParams.toString()],
-    queryFn: () => getCustomersList(searchParams.toString()),
+    queryKey: ["customers", queryString],
+    queryFn: () => getCustomersList(queryString),
   });
 
   let customers = data?.customers || [];
   const pagination = data?.pagination;
+  const { data: orderStatsMap, isPending: isStatsLoading } = useCustomerOrderStats();
 
   const handleSelectCustomer = (id: string) => {
     setSelectedCustomers((prev) => {
@@ -880,6 +885,7 @@ const CustomersPage = () => {
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Gender</TableHead>
+                  <TableHead>Orders</TableHead>
                   <TableHead>Address</TableHead>
                   <TableHead>Notes</TableHead>
                   <TableHead>Color Code</TableHead>
@@ -915,6 +921,22 @@ const CustomersPage = () => {
                       <TableCell>{c.email || "-"}</TableCell>
                       <TableCell>{c.phone || "-"}</TableCell>
                       <TableCell>{c.gender || "-"}</TableCell>
+                      <TableCell data-testid={`customer-orders-cell-${c.userId}`}>
+                        {orderStatsMap?.[c.userId] ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium">{orderStatsMap[c.userId].count}</span>
+                            {orderStatsMap[c.userId].count >= 2 && (
+                              <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                                Repeat Customer
+                              </span>
+                            )}
+                          </div>
+                        ) : isStatsLoading ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         {`${addressLine1}, ${addressLine2}, ${city}, ${state}, ${pincode}` ||
                           "-"}

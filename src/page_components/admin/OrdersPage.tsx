@@ -77,9 +77,10 @@ import { tailoringDetails } from "@/services/constants";
 import { MeasurementsModal } from "@/components/admin/modals/MeasurementsModal";
 import EventsOptions from "@/components/admin/EventsOptions";
 import { CreatePickupDialog } from "@/components/admin/CreatePickupDialog";
-import OrderDetailsPage from "@/page_components/OrderDetailsPage";
 import { TabsContent } from "@radix-ui/react-tabs";
 import PickupsPage from "@/components/admin/PickupsPage";
+import AdminOrderDetailView from "@/page_components/admin/AdminOrderDetailView";
+import RoleQueueView from "@/components/admin/RoleQueueView";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -316,11 +317,14 @@ const OrdersPage = () => {
   };
   const [searchField, setSearchField] = useState(SEARCH_FIELDS[0].value);
   const [searchValue, setSearchValue] = useState("");
+  const queryString = new URLSearchParams(
+    searchParams as Record<string, string>,
+  ).toString();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const { user } = useAuth();
   const [orderToDelete, setOrderToDelete] = useState(null);
   const [isMeasurementModalOpen, setIsMeasurementModalOpen] = useState(false);
-  const [tab, setTab] = useState<"orders" | "pickups">("orders");
+  const [tab, setTab] = useState<"orders" | "pickups" | "queue">("orders");
   const orderToEditMeasurement = useRef<string | null>(null);
   const [orderExistingMeasurementData, setOrderExistingMeasurementData] =
     useState({});
@@ -328,7 +332,16 @@ const OrdersPage = () => {
   // Set initial tab based on user role
   useEffect(() => {
     if (user) {
-      setTab(user.role === UserRole.PICKUP_COORDINATOR ? "pickups" : "orders");
+      if (user.role === UserRole.PICKUP_COORDINATOR) {
+        setTab("pickups");
+      } else if (
+        user.role === UserRole.CUTTING ||
+        user.role === UserRole.STITCHING
+      ) {
+        setTab("queue");
+      } else {
+        setTab("orders");
+      }
     }
   }, [user]);
 
@@ -413,14 +426,14 @@ const OrdersPage = () => {
     error: fetchError,
     refetch: refetchOrders,
   } = useQuery({
-    queryKey: ["orders", searchParams.toString()],
+    queryKey: ["orders", queryString],
     queryFn: () => {
       if (!canView) {
         return Promise.reject(
           new Error("You don't have permission to view orders"),
         );
       }
-      return getAllOrders(searchParams.toString());
+      return getAllOrders(queryString);
     },
     retry: 2,
     retryDelay: 1000,
@@ -461,7 +474,7 @@ const OrdersPage = () => {
     onSuccess: (res, orderId) => {
       //refetchOrders();
       queryClient.setQueryData(
-        ["orders", searchParams.toString()],
+        ["orders", queryString],
         (oldData: any) => {
           if (!oldData) {
             return oldData;
@@ -558,142 +571,37 @@ const OrdersPage = () => {
     );
   }, [selectedOrderId, orders, pinnedOrders]);
 
-  const renderOrderManageControls = (order: any) => (
-    <>
-                  {/* Assignment & status controls */}
-                  <div className="rounded-lg border p-4 space-y-4">
-
-                    <h3 className="text-sm font-semibold">Manage Order</h3>
-                    <div className="flex flex-wrap items-end gap-4">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs text-muted-foreground">
-                          Processing State
-                        </label>
-                        <Select
-                          value={order.orderProcessingState}
-                          onValueChange={(val) =>
-                            updateOrderProcessingState({
-                              orderId: order.id,
-                              nextState: val,
-                            })
-                          }
-                        >
-                          <SelectTrigger className="w-56" disabled={!canEdit}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ORDER_TIMELINE_OPTIONS.map((opt, i) => (
-                              <SelectItem key={i} value={opt.value}>
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs text-muted-foreground">
-                          Assign Stitching Agent
-                        </label>
-                        <Select
-                          disabled={isAssigningToStitchingAgent || !canEdit}
-                          value={order.assignedToStitchingAgentId || "none"}
-                          onValueChange={(val) =>
-                            assignOrderToStitchingAgent({
-                              orderId: order.id,
-                              agentId: val,
-                            })
-                          }
-                        >
-                          <SelectTrigger className="w-56">
-                            <SelectValue placeholder="Unassigned" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">None</SelectItem>
-                            {teamMembersViaRole?.map((el: any) => (
-                              <SelectItem key={el._id} value={el._id}>
-                                {el.firstName} {el.lastName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {user?.role === UserRole.ADMIN && (
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs text-muted-foreground">
-                            Pin order
-                          </label>
-                          <div className="flex items-center gap-2 h-10">
-                            <Switch
-                              disabled={isUpdatingPin}
-                              checked={!!order.isPinned}
-                              onCheckedChange={(val) => {
-                                const pinPosition = window.prompt("Enter pin position");
-                                pinOrder({
-                                  orderId: order.id,
-                                  pinPosition: Number(pinPosition),
-                                  isPinned: val,
-                                });
-                              }}
-                            />
-                            {isUpdatingPin && (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 pt-2 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setOrderExistingMeasurementData(order.measurements);
-                          orderToEditMeasurement.current = order.id;
-                          setIsMeasurementModalOpen(true);
-                        }}
-                      >
-                        <RulerIcon className="w-4 h-4 mr-1" /> Measurements
-                      </Button>
-                      {user?.role === UserRole.ADMIN && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={isCopyingOrder}
-                          onClick={() => duplicateOrderMutation(order.id)}
-                        >
-                          {isCopyingOrder ? (
-                            <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                          ) : (
-                            <Repeat className="w-4 h-4 mr-1" />
-                          )}
-                          Repeat Order
-                        </Button>
-                      )}
-                      {user?.role === UserRole.ADMIN && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 border-red-200 hover:bg-red-50"
-                          onClick={() => {
-                            setIsOrderModalOpen(false);
-                            openConfirm(order.id);
-                          }}
-                        >
-                          <Trash className="w-4 h-4 mr-1" /> Delete
-                        </Button>
-                      )}
-                    </div>
-
-                    {user?.role !== UserRole.ADMIN && (
-                      <div className="pt-2 border-t">
-                        <EventsOptions orderId={order.id} />
-                      </div>
-                    )}
-                  </div>
-    </>
+  const renderOrderDetail = (order: any) => (
+    <AdminOrderDetailView
+      order={order}
+      canEdit={canEdit}
+      teamMembersViaRole={teamMembersViaRole}
+      isAssigningToStitchingAgent={isAssigningToStitchingAgent}
+      isUpdatingPin={isUpdatingPin}
+      isDuplicating={isCopyingOrder}
+      showAdminActions={user?.role === UserRole.ADMIN}
+      onAssignStitchingAgent={(orderId, agentId) =>
+        assignOrderToStitchingAgent({ orderId, agentId })
+      }
+      onUpdateProcessingState={(orderId, nextState) =>
+        updateOrderProcessingState({ orderId, nextState })
+      }
+      onUpdateOrderStatus={(orderId, status) => updateOrderStatus({ orderId, status })}
+      onPinOrder={(orderId, isPinned, pinPosition) =>
+        pinOrder({ orderId, isPinned, pinPosition })
+      }
+      onDuplicate={(orderId) => duplicateOrderMutation(orderId)}
+      onDelete={(orderId) => {
+        setIsOrderModalOpen(false);
+        setIsCustomerModalOpen(false);
+        openConfirm(orderId);
+      }}
+      onEditMeasurements={(orderId, measurements) => {
+        setOrderExistingMeasurementData(measurements);
+        orderToEditMeasurement.current = orderId;
+        setIsMeasurementModalOpen(true);
+      }}
+    />
   );
 
 
@@ -753,7 +661,7 @@ const OrdersPage = () => {
       // refetchOrders();
 
       queryClient.setQueryData(
-        ["orders", searchParams.toString()],
+        ["orders", queryString],
         (oldData: any) => {
           if (!oldData) {
             return oldData;
@@ -802,7 +710,7 @@ const OrdersPage = () => {
     onSuccess: (res, { orderId, nextState }) => {
       // refetchOrders();
       queryClient.setQueryData(
-        ["orders", searchParams.toString()],
+        ["orders", queryString],
         (oldData: any) => {
           if (!oldData) {
             return oldData;
@@ -874,7 +782,7 @@ const OrdersPage = () => {
 
       onSuccess: (res) => {
         queryClient.setQueryData(
-          ["orders", searchParams.toString()],
+          ["orders", queryString],
           (oldData: any) => {
             if (!oldData) {
               return oldData;
@@ -906,7 +814,7 @@ const OrdersPage = () => {
       retry: false,
     });
 
-  const handleTabChange = (tab: "orders" | "pickups") => {
+  const handleTabChange = (tab: "orders" | "pickups" | "queue") => {
     if (tab === "orders") {
       const newQuery = { ...router.query };
       delete newQuery.all_orders;
@@ -1044,7 +952,7 @@ const OrdersPage = () => {
     },
     onSuccess: (res, { orderId, isPinned, pinPosition }) => {
       queryClient.setQueryData(
-        ["orders", searchParams.toString()],
+        ["orders", queryString],
         (oldData: any) => {
           refetchOrders();
           if (!oldData) {
@@ -1110,7 +1018,7 @@ const OrdersPage = () => {
     },
     onSuccess: (res, { orderId, agentId }) => {
       queryClient.setQueryData(
-        ["orders", searchParams.toString()],
+        ["orders", queryString],
         (oldData: any) => {
           if (!oldData) {
             return oldData;
@@ -1627,7 +1535,7 @@ const OrdersPage = () => {
         <Tabs
           value={tab}
           onValueChange={(v) => {
-            handleTabChange(v as "orders" | "pickups");
+            handleTabChange(v as "orders" | "pickups" | "queue");
           }}
           className="w-full mb-4"
         >
@@ -1650,6 +1558,17 @@ const OrdersPage = () => {
                 className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
               >
                 Pickups
+              </TabsTrigger>
+            )}
+            {(user?.role === UserRole.ADMIN ||
+              user?.role === UserRole.CUTTING ||
+              user?.role === UserRole.STITCHING) && (
+              <TabsTrigger
+                value="queue"
+                className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
+                data-testid="tab-trigger-queue"
+              >
+                {user?.role === UserRole.STITCHING ? "Stitching Queue" : "Cutting Queue"}
               </TabsTrigger>
             )}
             {user?.role != UserRole.ADMIN && (
@@ -2494,6 +2413,18 @@ const OrdersPage = () => {
               <PickupsPage />
             </TabsContent>
           )}
+
+          {(user.role === UserRole.ADMIN ||
+            user.role === UserRole.CUTTING ||
+            user.role === UserRole.STITCHING) && (
+            <TabsContent value="queue">
+              <RoleQueueView
+                role={user.role === UserRole.STITCHING ? "STITCHING" : "CUTTING"}
+                onOpenOrder={openOrderModal}
+                canEdit={canEdit}
+              />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
@@ -2677,10 +2608,7 @@ const OrdersPage = () => {
                       value={order.id}
                       className="space-y-4 focus:outline-none"
                     >
-                      {renderOrderManageControls(order)}
-                      <div className="rounded-lg border bg-muted/20 p-2">
-                        <OrderDetailsPage orderId={order.id} embedded />
-                      </div>
+                      {renderOrderDetail(order)}
                     </TabsContent>
                   ))}
                 </Tabs>
@@ -2744,135 +2672,7 @@ const OrdersPage = () => {
                 </div>
 
                 <div className="overflow-y-auto px-6 py-5">
-                  <Tabs
-                    key={selectedOrder.id}
-                    defaultValue="overview"
-                    className="w-full"
-                  >
-                  <TabsList className="mb-5 border-b border-gray-200 bg-transparent p-0 h-auto w-full justify-start gap-1">
-                    {[
-                      { value: "overview", label: "Overview" },
-                      { value: "manage", label: "Manage" },
-                      { value: "details", label: "Full Details" },
-                      { value: "measurements", label: "Measurements" },
-                      { value: "timeline", label: "Timeline" },
-                    ].map((t) => (
-                      <TabsTrigger
-                        key={t.value}
-                        value={t.value}
-                        className="px-4 py-2 text-sm font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0"
-                      >
-                        {t.label}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-
-                  <TabsContent value="overview" className="space-y-6 focus:outline-none">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-
-                    {[
-                      { label: "Product", value: selectedOrder.productName || "—" },
-                      {
-                        label: "Amount",
-                        value: `₹${(
-                          selectedOrder.customPrice || selectedOrder.productPrice || 0
-                        ).toLocaleString()}`,
-                      },
-                      {
-                        label: "Order Date",
-                        value: selectedOrder.orderDate
-                          ? format(new Date(selectedOrder.orderDate), "dd MMM yyyy, hh:mm a")
-                          : "N/A",
-                      },
-                      {
-                        label: "Delivery",
-                        value:
-                          selectedOrder.appointmentDate &&
-                          !isNaN(new Date(selectedOrder.appointmentDate).getTime())
-                            ? `${format(new Date(selectedOrder.appointmentDate), "dd MMM yyyy")}${selectedOrder.appointmentTime ? ` · ${selectedOrder.appointmentTime}` : ""}`
-                            : "N/A",
-                      },
-                      {
-                        label: "Payment Status",
-                        value: getPaymentStatusDisplayText(selectedOrder.paymentStatus),
-                      },
-                      {
-                        label: "Order Status",
-                        value: selectedOrder.orderStatus || "N/A",
-                      },
-                      {
-                        label: "Coupon",
-                        value: selectedOrder.couponCode || "—",
-                      },
-                      {
-                        label: "Pinned",
-                        value: selectedOrder.isPinned
-                          ? `Yes (#${selectedOrder.pinPosition ?? "-"})`
-                          : "No",
-                      },
-                    ].map((s) => (
-                      <div key={s.label} className="rounded-lg border bg-muted/30 p-3">
-                        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                          {s.label}
-                        </div>
-                        <div className="text-sm font-semibold capitalize break-words">
-                          {s.value}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  </TabsContent>
-
-                  <TabsContent value="manage" className="space-y-6 focus:outline-none">
-                  {renderOrderManageControls(selectedOrder)}
-                  </TabsContent>
-
-                  <TabsContent value="details" className="focus:outline-none">
-                    <div className="rounded-lg border bg-muted/20 p-2">
-                      <OrderDetailsPage orderId={selectedOrder.id} embedded />
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="measurements" className="space-y-6 focus:outline-none">
-                  {/* Measurements */}
-                  {selectedOrder.measurements && (
-                    <div className="rounded-lg border p-4">
-
-                      <h3 className="text-sm font-semibold mb-3">Measurements</h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                        {Object.entries(
-                          selectedOrder.measurements?.bodyMeasurement || {},
-                        ).map(([k, v]) => (
-                          <div key={k} className="rounded border bg-muted/20 px-2 py-1">
-                            <span className="text-xs text-muted-foreground capitalize">
-                              {k.replace(/_/g, " ")}:{" "}
-                            </span>
-                            <span className="font-medium">{String(v)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {!selectedOrder.measurements && (
-                    <p className="text-sm text-muted-foreground">
-                      No measurements captured for this order yet.
-                    </p>
-                  )}
-                  </TabsContent>
-
-                  <TabsContent value="timeline" className="space-y-6 focus:outline-none">
-                  {selectedOrder.timeLine?.length > 0 ? (
-                    <div className="rounded-lg border p-4">
-                      <h3 className="text-sm font-semibold mb-3">Timeline</h3>
-                      <OrderTimelineView timeline={selectedOrder.timeLine} />
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No timeline events yet.
-                    </p>
-                  )}
-                  </TabsContent>
-                </Tabs>
+                  {renderOrderDetail(selectedOrder)}
                 </div>
 
 
