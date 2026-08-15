@@ -1,12 +1,7 @@
-"use client";
-import { useEffect, useRef, useState } from "react";
-import { Plus, Minus, Loader2 } from "lucide-react";
 import { getCustomizationMappingOptions } from "@/services";
-import { useQuery } from "@tanstack/react-query";
-
 import PlaceholderImage from "../assets/custome-design-image-placeholder.svg";
 import MultiImageBookingModal from "./MultiImageBookingModal";
-import { useRouter } from "@/lib/next-router-compat";
+import { Plus, Minus } from "lucide-react";
 
 const categories = [
   { id: "none", label: "None" },
@@ -23,273 +18,197 @@ interface Design {
   category: string;
   imageUrl: string;
   complexity: string;
+  type?: string;
 }
 
 interface DesignGridProps {
   type: string;
-  onSelectDesign?: (design: any) => void;
-  setPage?: (page: number) => void;
-  selectedCustomizations?: any[];
-  onRemoveCustomization?: (id: string) => void;
-  setUploadedImageUrls: React.Dispatch<React.SetStateAction<any[]>>;
-  uploadedImages: string[];
+  categoryId?: string;
+  styleId?: string;
 }
 
-const DesignGrid = ({
-  type,
-  onSelectDesign,
-  selectedCustomizations = [],
-  onRemoveCustomization,
-  setUploadedImageUrls,
-  uploadedImages,
-}: DesignGridProps) => {
-  const [visibleCategory, setVisibleCategory] = useState("basic");
-  const { id: catId, styleId } = useRouter().query;
-  const [showImagePicker, setShowImagePicker] = useState(false);
-
-  const { data: designs = [], isLoading } = useQuery<Design[]>({
-    queryKey: ["customizationOptions", type, styleId, catId],
-    queryFn: async () => {
-      const data = await getCustomizationMappingOptions({
-        customizationType: type,
-        subCategoryId: styleId,
-        categoryId: catId,
-      });
-
-      const newData = data.map((elem) => ({
-        ...elem,
-        category:
-          elem.complexity === "Basic"
-            ? "basic"
-            : elem.complexity === "Intermediate"
-              ? "intermediate"
-              : elem.complexity === "Advanced"
-                ? "advanced"
-                : "none",
-        type: type,
-      }));
-
-      const groupedData = newData.reduce(
-        (acc, curr) => {
-          if (!acc[curr.category]) {
-            acc[curr.category] = [];
-          }
-          acc[curr.category].push(curr);
-          return acc;
-        },
-        {} as Record<string, Design[]>,
-      );
-
-      const sequentialData: Design[] = [];
-
-      for (let i = 0; i < Object.keys(groupedData).length; i++) {
-        if (Object.keys(groupedData)[i] === "none") {
-          sequentialData.unshift(...groupedData[Object.keys(groupedData)[i]]);
-        } else {
-          sequentialData.push(...groupedData[Object.keys(groupedData)[i]]);
-        }
-      }
-
-      return sequentialData;
-    },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
+const DesignGrid = async ({ type, categoryId, styleId }: DesignGridProps) => {
+  const data = await getCustomizationMappingOptions({
+    customizationType: type,
+    subCategoryId: styleId,
+    categoryId,
   });
 
-  const refs = {
-    none: useRef<HTMLDivElement>(null),
-    basic: useRef<HTMLDivElement>(null),
-    intermediate: useRef<HTMLDivElement>(null),
-    advanced: useRef<HTMLDivElement>(null),
-  };
+  const designs: Design[] = data.map((elem: any) => ({
+    ...elem,
+    category:
+      elem.complexity === "Basic"
+        ? "basic"
+        : elem.complexity === "Intermediate"
+          ? "intermediate"
+          : elem.complexity === "Advanced"
+            ? "advanced"
+            : "none",
+    type,
+  }));
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (let entry of entries) {
-          if (entry.isIntersecting) {
-            const category = entry.target.getAttribute("data-category");
-            if (category) setVisibleCategory(category);
-          }
-        }
-      },
-      {
-        root: null,
-        rootMargin: "0px 0px -23% 0px",
-        threshold: 0.4,
-      },
-    );
+  const groupedData = designs.reduce(
+    (acc, curr) => {
+      if (!acc[curr.category]) {
+        acc[curr.category] = [];
+      }
 
-    Object.values(refs).forEach((ref) => {
-      if (ref.current) observer.observe(ref.current);
-    });
-
-    return () => observer.disconnect();
-  }, [designs]);
-
-  const scrollToCategory = (id: string) => {
-    refs[id as keyof typeof refs].current?.scrollIntoView({
-      behavior: "smooth",
-    });
-  };
-
-  const selectedDesign = selectedCustomizations.find(
-    (sel) => sel.type === type,
+      acc[curr.category].push(curr);
+      return acc;
+    },
+    {} as Record<string, Design[]>,
   );
 
+  const sequentialData: Design[] = [];
+
+  Object.keys(groupedData).forEach((category) => {
+    if (category === "none") {
+      sequentialData.unshift(...groupedData[category]);
+    } else {
+      sequentialData.push(...groupedData[category]);
+    }
+  });
+
+  const renderCategory = (categoryId: string, label: string) => {
+    const categoryDesigns = sequentialData.filter(
+      (design) => design.category === categoryId,
+    );
+
+    if (!categoryDesigns.length) {
+      return null;
+    }
+
+    return (
+      <section
+        id={`design-category-${categoryId}`}
+        data-category={categoryId}
+        className="scroll-mt-20"
+      >
+        <div className="mb-2 px-1 text-xs font-semibold capitalize text-gray-600">
+          {label}
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+          {categoryDesigns.map((design) => (
+            <div
+              key={design._id}
+              className="flex cursor-pointer flex-col items-center rounded-md border border-gray-200 bg-white p-1 text-center transition-all hover:scale-[1.01] hover:shadow-sm"
+              data-design-id={design._id}
+              data-design-type={type}
+            >
+              <div className="aspect-square w-full overflow-hidden rounded-sm bg-gray-100">
+                <img
+                  src={
+                    !design.imageUrl || design.imageUrl === ""
+                      ? PlaceholderImage
+                      : design.imageUrl
+                  }
+                  alt={design.title}
+                  className="h-full w-full object-cover"
+                  loading="eager"
+                />
+              </div>
+
+              <div className="mt-1 line-clamp-2 px-1 text-xs font-medium">
+                {design.title}
+              </div>
+
+              <div className="mt-1 text-xs">
+                {design.price !== design.discountedPrice ? (
+                  <>
+                    <span className="text-gray-400 line-through">
+                      ₹{design.price}
+                    </span>{" "}
+                    <span className="font-semibold text-primary">
+                      ₹{design.discountedPrice}
+                    </span>
+                  </>
+                ) : (
+                  <span className="font-semibold text-primary">
+                    ₹{design.price}
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-1 rounded-full border border-primary p-1 text-primary">
+                <Plus className="h-4 w-4" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  };
+
   return (
-    <div className="flex flex-col h-full px-2 pt-2">
-      <div className="sticky top-0 z-50 bg-white border-b py-1">
-        <div className="text-sm font-semibold text-gray-700 text-center mb-1 capitalize">
+    <div className="flex h-full flex-col px-2 pt-2">
+      {/* Category Navigation */}
+      <div className="sticky top-0 z-50 border-b bg-white py-1">
+        <div className="mb-1 text-center text-sm font-semibold capitalize text-gray-700">
           {type} Designs
         </div>
 
-        <div className="flex space-x-2 overflow-x-auto no-scrollbar px-1 justify-center">
-          {categories.map((cat, index) => (
-            <button
-              key={`${cat.id}-${index}`}
-              onClick={() => scrollToCategory(cat.id)}
-              className={`text-xs px-2 pb-1 border-b-2 transition ${
-                visibleCategory === cat.id
-                  ? "text-primary border-primary font-semibold"
-                  : "text-gray-500 border-transparent hover:text-gray-700"
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-      </div>
+        <nav
+          aria-label={`${type} design categories`}
+          className="flex justify-center space-x-2 overflow-x-auto px-1 no-scrollbar"
+        >
+          {categories.map((category) => {
+            const hasDesigns = sequentialData.some(
+              (design) => design.category === category.id,
+            );
 
-      {/*       {designs.length === 0 && !isLoading && (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-gray-500">No designs found</div>
-        </div>
-      )} */}
-
-      {isLoading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 overflow-y-auto">
-          {/* Upload Card */}
-          <button
-            className={`p-1 rounded-md transition-all border flex flex-col items-center text-center`}
-            onClick={() => setShowImagePicker(true)}
-          >
-            <div className="aspect-square bg-gray-100 w-full overflow-hidden rounded-sm">
-              <img
-                src={PlaceholderImage}
-                alt={"Upload custom designs"}
-                className="object-cover w-full h-full"
-                loading="lazy"
-              />
-            </div>
-            <div className="text-xs font-medium mt-1 line-clamp-2 px-1">
-              Upload custom designs
-            </div>
-            <div className="text-xs mt-1">
-              <span className="text-primary font-semibold">
-                {uploadedImages.length} selected
-              </span>
-            </div>
-            <div className="mt-1 p-1 rounded-full border text-primary border-primary hover:bg-primary/10">
-              <Plus className="w-4 h-4" />
-            </div>
-          </button>
-
-          {/* Design Cards */}
-          {designs.map((design) => {
-            const isSelected = selectedDesign?._id === design._id;
-            const isAnotherSelected = selectedDesign && !isSelected;
+            if (!hasDesigns) {
+              return null;
+            }
 
             return (
-              <div
-                key={design._id}
-                onClick={() => {
-                  onSelectDesign?.({ ...design, type });
-                }}
-                className={`p-1 rounded-md transition-all border flex flex-col items-center text-center cursor-pointer ${
-                  isSelected
-                    ? "ring-2 ring-primary bg-primary/10 border-primary"
-                    : isAnotherSelected
-                      ? "opacity-50 pointer-events-auto border-gray-200 bg-gray-100"
-                      : "hover:shadow-sm border-gray-200 bg-white hover:scale-[1.01]"
-                }`}
-                data-category={design.category}
-                ref={refs[design.category as keyof typeof refs]}
+              <a
+                key={category.id}
+                href={`#design-category-${category.id}`}
+                className="border-b-2 border-transparent px-2 pb-1 text-xs text-gray-500 transition hover:border-primary hover:text-primary"
               >
-                <div className="aspect-square bg-gray-100 w-full overflow-hidden rounded-sm">
-                  <img
-                    src={
-                      !design.imageUrl || design.imageUrl === ""
-                        ? PlaceholderImage
-                        : design.imageUrl
-                    }
-                    alt={design.title}
-                    className="object-cover w-full h-full"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="text-xs font-medium mt-1 line-clamp-2 px-1">
-                  {design.title}
-                </div>
-                <div className="text-xs mt-1">
-                  {design.price !== design.discountedPrice ? (
-                    <>
-                      <span className="line-through text-gray-400">
-                        ₹{design.price}
-                      </span>{" "}
-                      <span className="text-primary font-semibold">
-                        ₹{design.discountedPrice}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-primary font-semibold">
-                      ₹{design.price}
-                    </span>
-                  )}
-                </div>
-                <div
-                  className={`mt-1 p-1 rounded-full border ${
-                    isSelected
-                      ? "text-red-500 border-red-300 hover:bg-red-50"
-                      : "text-primary border-primary hover:bg-primary/10"
-                  }`}
-                >
-                  {isSelected ? (
-                    <Minus className="w-4 h-4" />
-                  ) : (
-                    <Plus className="w-4 h-4" />
-                  )}
-                </div>
-              </div>
+                {category.label}
+              </a>
             );
           })}
-        </div>
-      )}
+        </nav>
+      </div>
 
-      {/* Image Modal */}
-      {showImagePicker && (
-        <MultiImageBookingModal
-          open={showImagePicker}
-          onOpenChange={setShowImagePicker}
-          onImageSelect={(urls) => {
-            setUploadedImageUrls((prev) => {
-              const uniqueImages = [...new Set([...prev, ...urls])];
-              return uniqueImages;
-            });
-          }}
-          onClose={() => setShowImagePicker(false)}
-          alreadySelectedImages={uploadedImages}
-          onRemoveImage={(url) => {
-            setUploadedImageUrls((prev) => prev.filter((img) => img !== url));
-          }}
-          type={type}
-          isPreviewMode={true}
-        />
-      )}
+      {/* Upload Card */}
+      <div className="grid grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3 md:grid-cols-4">
+        <div className="flex flex-col items-center rounded-md border p-1 text-center">
+          <div className="aspect-square w-full overflow-hidden rounded-sm bg-gray-100">
+            <img
+              src={PlaceholderImage}
+              alt="Upload custom designs"
+              className="h-full w-full object-cover"
+              loading="eager"
+            />
+          </div>
+
+          <div className="mt-1 line-clamp-2 px-1 text-xs font-medium">
+            Upload custom designs
+          </div>
+
+          <div className="mt-1 text-xs">
+            <span className="font-semibold text-primary">
+              Upload custom designs
+            </span>
+          </div>
+
+          <div className="mt-1 rounded-full border border-primary p-1 text-primary">
+            <Plus className="h-4 w-4" />
+          </div>
+        </div>
+
+        {/* Server-rendered Design Sections */}
+        <div className="col-span-full flex flex-col gap-6">
+          {renderCategory("none", "None")}
+          {renderCategory("basic", "Basic")}
+          {renderCategory("intermediate", "Intermediate")}
+          {renderCategory("advanced", "Advanced")}
+        </div>
+      </div>
     </div>
   );
 };

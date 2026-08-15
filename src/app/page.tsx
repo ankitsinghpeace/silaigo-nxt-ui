@@ -1,6 +1,4 @@
 // src/app/page.tsx
-"use client";
-
 import Index from "@/page_components/Index";
 
 export const dynamic = 'force-dynamic';

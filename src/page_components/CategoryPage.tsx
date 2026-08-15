@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+"use client";
+
+import React, { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { fetchAllMetaMaster, fetchSubCategoryData } from "@/services";
 import ReferralModal from "@/components/promotions/ReferralModal";
 import OfferModal from "@/components/promotions/OfferModal";
 import { MetaTagsProvider } from "@/components/MetaTagsProvider";
@@ -11,47 +12,22 @@ import RibbonLabel from "@/components/RibbonLabel";
 import { getSeoContent } from "@/lib/getSeoContent";
 import { Phone } from "lucide-react";
 import { useRouter } from "@/lib/next-router-compat";
+
 type CategoryPageProps = {
-  id: string;
+  categoryId: number;
+  subCategoriesData: any;
+  metadata: any;
 };
 
-const CategoryPage = ({ id }: CategoryPageProps) => {
+const CategoryPage = ({ categoryId, subCategoriesData, metadata }: CategoryPageProps) => {
   const router = useRouter();
-  const [selectedCategory, setSelectedCategory] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<any>(subCategoriesData ? { ...subCategoriesData } : null);
   const [showReferralModal, setShowReferralModal] = useState(false);
-  const [metadata, setMetadata] = useState<any>(null);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const categoryId = Number(id);
-        setIsLoading(true);
-        const subCategoriesData = await fetchSubCategoryData(categoryId);
-        const metadata = await fetchAllMetaMaster();
-        setMetadata(metadata);
-        setSelectedCategory({ ...subCategoriesData });
-      } catch (error) {
-        setSelectedCategory({
-          name: "",
-          description: "",
-          imageUrl: "",
-          styles: [],
-        });
-        toast({
-          title: "Error",
-          description: "Failed to load styles. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, [id, toast]);
+  const isLoading = !selectedCategory;
 
   const handleFilterClick = (filter: string) => {
     setActiveFilter((prev) => (prev === filter ? null : filter));
@@ -79,7 +55,7 @@ const CategoryPage = ({ id }: CategoryPageProps) => {
     });
   };
 
-  if (isLoading || !selectedCategory) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
@@ -99,6 +75,7 @@ const CategoryPage = ({ id }: CategoryPageProps) => {
         title={getSeoContent(selectedCategory.name).title}
         description={getSeoContent(selectedCategory.name).description}
         image={selectedCategory.imageUrl || selectedCategory.image}
+        canonicalPath={`/category/${categoryId}`}
         keywords={getFilteredStyles()
           .map((style: any) => style.name)
           .join(", ")}

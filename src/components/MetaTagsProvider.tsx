@@ -1,9 +1,5 @@
 // components/MetaTagsProvider.tsx
 
-"use client";
-
-import Head from "next/head";
-
 interface MetaTagsProviderProps {
   title: string;
   description: string;
@@ -15,7 +11,7 @@ interface MetaTagsProviderProps {
 }
 
 const BASE_URL = "https://www.silaigo.com";
-const defaultImage = `${BASE_URL}/logo.png`;
+const DEFAULT_IMAGE = `${BASE_URL}/logo.png`;
 
 export const MetaTagsProvider = ({
   title,
@@ -34,40 +30,35 @@ export const MetaTagsProvider = ({
 
   const cleanPath = standardizedPath.replace(/\/+$/, "") || "/";
 
-  const canonicalUrl = `${BASE_URL}${cleanPath === "/" ? "" : cleanPath}`;
+  const canonicalUrl = cleanPath === "/" ? BASE_URL : `${BASE_URL}${cleanPath}`;
+
+  const imageUrl = image || DEFAULT_IMAGE;
 
   return (
-    <Head>
+    <>
       {/* Primary Meta Tags */}
       <title>{title}</title>
 
       <meta name="title" content={title} />
-
       <meta name="description" content={description} />
 
       {keywords && <meta name="keywords" content={keywords} />}
 
       <meta name="author" content="Silaigo | Ankit Singh" />
+      <meta name="language" content="English" />
 
       {/* Open Graph */}
       <meta property="og:type" content={type} />
-
       <meta property="og:url" content={canonicalUrl} />
-
       <meta property="og:title" content={title} />
-
       <meta property="og:description" content={description} />
-
-      <meta property="og:image" content={image || defaultImage} />
+      <meta property="og:image" content={imageUrl} />
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />
-
       <meta name="twitter:title" content={title} />
-
       <meta name="twitter:description" content={description} />
-
-      <meta name="twitter:image" content={image || defaultImage} />
+      <meta name="twitter:image" content={imageUrl} />
 
       {/* Robots */}
       <meta
@@ -75,13 +66,8 @@ export const MetaTagsProvider = ({
         content={noindex ? "noindex, nofollow" : "index, follow"}
       />
 
+      {/* Canonical */}
       <link rel="canonical" href={canonicalUrl} />
-
-      <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />
-
-      <meta name="language" content="English" />
-
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    </Head>
+    </>
   );
 };

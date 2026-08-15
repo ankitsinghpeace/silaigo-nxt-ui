@@ -1,11 +1,13 @@
+"use client";
+
 import React, { useState } from "react";
 import HeroCarousel from "@/components/HeroCarousel";
 import JourneySection from "@/components/JourneySection";
 import AchievementsBanner from "@/components/AchievementsBanner";
-import CategorySection from "@/components/CategorySection";
-import VideoSection from "@/components/VideoSection";
+import CategorySectionServer from "@/components/CategorySectionServer";
+import VideoSectionServer from "@/components/VideoSectionServer";
 import PartnersBanner from "@/components/PartnersBanner";
-import TestimonialsSection from "@/components/TestimonialsSection";
+import TestimonialsSectionServer from "@/components/TestimonialsSectionServer";
 import FnqSection from "@/components/FnqSection";
 import SpinnerModal from "@/components/promotions/SpinnerModal";
 import { useToast } from "@/hooks/use-toast";
@@ -69,10 +71,10 @@ const Index: React.FC = () => {
         <HeroCarousel onReady={() => setHeroReady(true)} />
         <JourneySection onReady={() => setJourneyReady(true)} />
         <AchievementsBanner onReady={() => setAchievementsReady(true)} />
-        <CategorySection onReady={() => setCategoryReady(true)} />
-        <VideoSection onReady={() => setVideoReady(true)} />
+        <CategorySectionServer onReady={() => setCategoryReady(true)} />
+        <VideoSectionServer onReady={() => setVideoReady(true)} />
         <PartnersBanner onReady={() => setPartnersReady(true)} />
-        <TestimonialsSection onReady={() => setTestimonialsReady(true)} />
+        <TestimonialsSectionServer onReady={() => setTestimonialsReady(true)} />
         <FnqSection onReady={() => setFnqReady(true)} />
       </div>
     </>

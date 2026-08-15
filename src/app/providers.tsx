@@ -7,12 +7,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OrderFlowProvider } from "@/contexts/OrderFlowContext";
-import Layout from "@/components/Layout";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // avoid duplicate/burst network calls on mount + focus
       staleTime: 1000 * 60 * 5,
       gcTime: 1000 * 60 * 30,
       refetchOnWindowFocus: false,
@@ -30,8 +28,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         <Suspense fallback={null}>
           <AuthProvider>
             <OrderFlowProvider>
-              <Layout>{children}</Layout>
+              {children}
             </OrderFlowProvider>
+
             <Toaster />
             <Sonner />
           </AuthProvider>

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Category } from "@/types/interface";
 import { Card } from "@/components/ui/card";
@@ -11,13 +11,14 @@ import OfferModal from "@/components/promotions/OfferModal";
 import ReferralModal from "@/components/promotions/ReferralModal";
 import SpinnerModal from "@/components/promotions/SpinnerModal";
 import { Button } from "@/components/ui/button";
-import { fetchAllCategories } from "@/services";
 import { MetaTagsProvider } from "@/components/MetaTagsProvider";
 import RibbonLabel from "@/components/RibbonLabel";
 
-const TailoringPage = () => {
-  const [categories, setCategoriesData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+interface TailoringPageProps {
+  categories: any;
+}
+
+const TailoringPage = ({ categories }: TailoringPageProps) => {
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [showSpinnerModal, setShowSpinnerModal] = useState(false);
@@ -34,30 +35,7 @@ const TailoringPage = () => {
     });
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const data = await fetchAllCategories();
-        setCategoriesData(
-          data?.sort((a: any, b: any) => a.rank - b.rank) || [],
-        );
-      } catch (error) {
-        console.error("Error fetching landing page data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load product categories. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [toast]);
-
-  if (isLoading || !categories) {
+  if (!categories) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
@@ -67,6 +45,9 @@ const TailoringPage = () => {
       </div>
     );
   }
+
+  // Sort categories by rank
+  const sortedCategories = categories?.sort((a: any, b: any) => a.rank - b.rank) || [];
   // Split categories into chunks of 4 for grid layout
   const chunkCategories = (arr: Category[], size: number) => {
     return Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
@@ -74,7 +55,7 @@ const TailoringPage = () => {
     );
   };
 
-  const categoriesInRows = chunkCategories(categories, 4);
+  const categoriesInRows = chunkCategories(sortedCategories, 4);
 
   const fadeInUpVariants = {
     hidden: { opacity: 0, y: 20 },

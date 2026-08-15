@@ -1,114 +1,83 @@
-"use client";
-import React, { useState, useEffect, useCallback } from "react";
-import { fetchPageSectionData } from "@/services";
 import Link from "next/link";
+import { getPageSectionData } from "@/lib/server-data";
 import { HeroSlide } from "@/types/interface";
 
 interface HeroCarouselProps {
-  onReady?: () => void;
+  hero?: HeroSlide[];
 }
 
-const HeroCarousel: React.FC<HeroCarouselProps> = ({ onReady }) => {
-  const [hero, setSlides] = useState<HeroSlide[]>([]);
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [screenWidth, setScreenWidth] = useState(0);
+const HeroCarousel = async ({ hero: initialHero }: HeroCarouselProps) => {
+  let hero = initialHero;
 
-  useEffect(() => {
-    const handleResize = () => {
-      setScreenWidth(window.innerWidth);
-    };
-
-    handleResize(); // set initial width
-
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
-
-  // Track loaded images count
-  const [loadedCount, setLoadedCount] = useState(0);
-
-  useEffect(() => {
-    const loadSlides = async () => {
-      try {
-        const data = await fetchPageSectionData("hero");
-        setSlides(data.hero || []);
-      } catch (error) {
-        console.error("Error fetching hero slides:", error);
-      }
-    };
-    loadSlides();
-  }, []);
-
-  useEffect(() => {
-    const handleResize = () => setScreenWidth(window.innerWidth);
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % hero.length);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [hero.length]);
-
-  // When all images loaded, call onReady once
-  useEffect(() => {
-    if (hero.length > 0 && loadedCount === hero.length) {
-      onReady?.();
+  if (!hero) {
+    try {
+      const data = await getPageSectionData("hero");
+      hero = data?.hero ?? [];
+    } catch (error) {
+      console.error("Error fetching hero slides:", error);
+      hero = [];
     }
-  }, [loadedCount, hero.length, onReady]);
+  }
 
-  const getResponsiveImage = (slide: HeroSlide): string => {
-    if (screenWidth < 768) return slide.smImage;
-    if (screenWidth < 1024) return slide.mdImage;
-    return slide.lgImage;
-  };
+  if (!hero.length) {
+    return null;
+  }
 
-  // Image load handler
-  const handleImageLoad = useCallback(() => {
-    setLoadedCount((count) => count + 1);
-  }, []);
+  const firstSlide = hero[0];
 
   return (
-    <section className="relative w-full overflow-hidden">
-      <div className="relative w-full aspect-[16/8] md:aspect-[16/5] lg:aspect-[16/2.5]">
-        {hero.map((slide, index) => {
-          const imageUrl = getResponsiveImage(slide);
+    <section aria-label="Hero" className="relative w-full overflow-hidden">
+      <div className="relative aspect-[16/8] w-full md:aspect-[16/5] lg:aspect-[16/2.5]">
+        <Link
+          href={firstSlide.link || "/tailoring"}
+          className="block h-full w-full"
+        >
+          {firstSlide.lgImage || firstSlide.mdImage || firstSlide.smImage ? (
+            <picture>
+              {firstSlide.smImage && (
+                <source
+                  media="(max-width: 767px)"
+                  srcSet={firstSlide.smImage}
+                />
+              )}
 
-          return (
-            <div
-              key={slide.title || index}
-              className={`absolute top-0 left-0 w-full h-full transition-opacity duration-1000 ${
-                currentSlide === index ? "opacity-100 z-10" : "opacity-0 z-0"
-              }`}
-            >
-              <Link
-                href={slide.link || "/tailoring"}
-                className="block w-full h-full"
-              >
-                {imageUrl ? (
-                  <img
-                    src={imageUrl}
-                    alt={slide.title || `Slide ${index + 1}`}
-                    className="w-full h-full object-cover"
-                    onLoad={handleImageLoad}
-                    onError={handleImageLoad} // count error as loaded to prevent blocking
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gray-300 flex items-center justify-center text-white font-semibold text-xl">
-                    No Image Available
-                  </div>
-                )}
-              </Link>
+              {firstSlide.mdImage && (
+                <source
+                  media="(max-width: 1023px)"
+                  srcSet={firstSlide.mdImage}
+                />
+              )}
+
+              <img
+                src={
+                  firstSlide.lgImage || firstSlide.mdImage || firstSlide.smImage
+                }
+                alt={firstSlide.title || "Hero banner"}
+                className="h-full w-full object-cover"
+                fetchPriority="high"
+              />
+            </picture>
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-gray-300 text-xl font-semibold text-white">
+              No Image Available
             </div>
-          );
-        })}
+          )}
+        </Link>
       </div>
+
+      {hero.length > 1 && (
+        <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 gap-2">
+          {hero.map((slide, index) => (
+            <span
+              key={slide.title || index}
+              aria-hidden="true"
+              className={`h-2 w-2 rounded-full ${
+                index === 0 ? "bg-white" : "bg-white/50"
+              }`}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 };

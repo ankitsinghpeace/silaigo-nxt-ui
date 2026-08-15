@@ -1,32 +1,15 @@
 "use client";
+
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Plus, Loader2 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { uploadToS3 } from "@/lib/uploadFile";
 import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
-import { TabsContent } from "@radix-ui/react-tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const generatePreviewUrl = async (imageFiles) => {
-  const imageUrls = [];
+type TabMode = "upload" | "preview";
 
-  for (let i = 0; i < imageFiles.length; i++) {
-    const reader = new FileReader();
-    const loadFile = new Promise((resolve, reject) => {
-      reader.onload = (e) => resolve(e.target.result);
-      reader.onerror = (err) => reject(err);
-      reader.readAsDataURL(imageFiles[i]);
-    });
-
-    const result = await loadFile;
-    imageUrls.push(result);
-  }
-
-  return imageUrls;
-};
-
-type tabs = "upload" | "preview";
 interface MultiImageBookingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -37,6 +20,30 @@ interface MultiImageBookingModalProps {
   type?: string;
   isPreviewMode: boolean;
 }
+
+const generatePreviewUrl = async (imageFiles: File[]): Promise<string[]> => {
+  return Promise.all(
+    imageFiles.map(
+      (file) =>
+        new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+
+          reader.onload = () => {
+            if (typeof reader.result === "string") {
+              resolve(reader.result);
+            } else {
+              reject(new Error("Failed to generate image preview"));
+            }
+          };
+
+          reader.onerror = () =>
+            reject(reader.error || new Error("Failed to read image"));
+
+          reader.readAsDataURL(file);
+        }),
+    ),
+  );
+};
 
 const MultiImageBookingModal = ({
   open,
@@ -50,142 +57,187 @@ const MultiImageBookingModal = ({
 }: MultiImageBookingModalProps) => {
   const [images, setImages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mode, setMode] = useState<tabs>(
-    alreadySelectedImages.length > 0 ? "preview" : "upload",
+
+  const [mode, setMode] = useState<TabMode>(
+    alreadySelectedImages.length > 0 && isPreviewMode ? "preview" : "upload",
   );
+
   const imageFiles = useRef<File[]>([]);
   const { toast } = useToast();
 
-  const removeImage = (index: number) => {
-    const filteredImages = images.filter((_, i) => {
-      return i != index;
-    });
-    setImages(filteredImages);
+  const handleClose = () => {
+    if (isSubmitting) return;
 
-    const filteredFiles = imageFiles.current.filter((_, i) => {
-      return i != index;
-    });
+    setImages([]);
+    imageFiles.current = [];
 
-    imageFiles.current = filteredFiles;
+    onOpenChange(false);
+    onClose();
   };
 
-  const removeAlreadyUploadedImages = (url: string) => {
-    const filteredImages = alreadySelectedImages.filter((imgUrl) => {
-      return imgUrl != url;
-    });
-    onRemoveImage(url);
+  const removeImage = (index: number) => {
+    setImages((current) =>
+      current.filter((_, currentIndex) => currentIndex !== index),
+    );
+
+    imageFiles.current = imageFiles.current.filter(
+      (_, currentIndex) => currentIndex !== index,
+    );
+  };
+
+  const removeAlreadyUploadedImage = (url: string) => {
+    onRemoveImage?.(url);
   };
 
   const handleSubmit = async () => {
-    if (!imageFiles.current && imageFiles.current.length === 0) {
+    if (imageFiles.current.length === 0 || isSubmitting) {
       return;
     }
 
-    const uploadPromises = imageFiles.current.map((file) => {
-      const fileInfo = {
-        resourceName: file.name,
-        resourceId: type,
-        fileType: file.type,
-        fileSize: file.size,
-      };
-
-      return uploadToS3(fileInfo, file);
-    });
-
     setIsSubmitting(true);
+
     try {
+      const uploadPromises = imageFiles.current.map((file) => {
+        const fileInfo = {
+          resourceName: file.name,
+          resourceId: type,
+          fileType: file.type,
+          fileSize: file.size,
+        };
+
+        return uploadToS3(fileInfo, file);
+      });
+
       const results = await Promise.all(uploadPromises);
+
       onImageSelect(results);
+
       setImages([]);
       imageFiles.current = [];
+
       toast({
         title: "Success",
-        description: "Images Uploaded successfully",
-        variant: "default",
+        description: "Images uploaded successfully",
       });
+
+      handleClose();
     } catch (error) {
       console.error("Error uploading images:", error);
+
+      toast({
+        title: "Upload failed",
+        description: "Unable to upload your images. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
-      onClose();
     }
   };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    imageFiles.current = acceptedFiles;
-    const imageUrls = await generatePreviewUrl(acceptedFiles);
-    setImages(imageUrls);
+    if (!acceptedFiles.length) {
+      return;
+    }
+
+    imageFiles.current = [...imageFiles.current, ...acceptedFiles];
+
+    try {
+      const previews = await generatePreviewUrl(imageFiles.current);
+
+      setImages(previews);
+    } catch (error) {
+      console.error("Error generating image previews:", error);
+    }
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     multiple: true,
-    accept: { "image/*;capture=camera": [] },
+    accept: {
+      "image/*": [],
+    },
     onDrop,
   });
 
+  if (!open) {
+    return null;
+  }
+
   return (
     <div
-      className={`fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 ${
-        !open ? "hidden" : ""
-      }`}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="image-upload-modal-title"
     >
-      <div className="bg-white p-6 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div className="flex justify-between items-center mb-6">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-6 shadow-2xl">
+        {/* Header */}
+        <div className="mb-6 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2
+              id="image-upload-modal-title"
+              className="text-xl font-semibold text-gray-900"
+            >
               Upload Your Samples
             </h2>
-            <p className="text-sm text-gray-500 mt-1">
+
+            <p className="mt-1 text-sm text-gray-500">
               Add multiple images for your order
             </p>
           </div>
-          <div className="flex gap-4 items-center justify-between">
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 transition-colors duration-300 ease-in-out"
-            >
-              <X size={24} />
-            </button>
-          </div>
+
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={isSubmitting}
+            className="text-gray-500 transition-colors duration-300 ease-in-out hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Close upload modal"
+          >
+            <X size={24} />
+          </button>
         </div>
 
         <Tabs
           value={mode}
-          onValueChange={(v) => setMode(v as tabs)}
-          className="w-full mb-4"
+          onValueChange={(value) => setMode(value as TabMode)}
+          className="mb-4 w-full"
         >
-          <TabsList className="border-b border-gray-200 bg-transparent p-0 h-auto">
+          <TabsList className="h-auto border-b border-gray-200 bg-transparent p-0">
             <TabsTrigger
               value="upload"
-              className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
+              className="rounded-none bg-transparent px-4 py-2 text-base font-semibold text-gray-600 shadow-none focus-visible:outline-none focus-visible:ring-0 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary"
             >
               Upload Images
             </TabsTrigger>
+
             <TabsTrigger
               value="preview"
-              className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
+              className="rounded-none bg-transparent px-4 py-2 text-base font-semibold text-gray-600 shadow-none focus-visible:outline-none focus-visible:ring-0 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary"
             >
               Uploaded Images
             </TabsTrigger>
           </TabsList>
 
+          {/* Upload */}
           <TabsContent value="upload">
-            <div className="space-y-6 mt-4 pb-20">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            <div className="mt-4 space-y-6 pb-4">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                 {images.map((url, index) => (
                   <div
-                    key={index}
-                    className="group relative aspect-square rounded-lg overflow-hidden bg-gray-100"
+                    key={`preview-${index}`}
+                    className="group relative aspect-square overflow-hidden rounded-lg bg-gray-100"
                   >
                     <img
                       src={url}
-                      alt={`Upload ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      alt={`Selected upload ${index + 1}`}
+                      className="h-full w-full object-cover"
                     />
-                    <div className="absolute inset-0 z-50 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
                       <button
+                        type="button"
                         onClick={() => removeImage(index)}
-                        className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors z-50"
+                        className="rounded-full bg-red-500 p-2 text-white transition-colors hover:bg-red-600"
+                        aria-label={`Remove image ${index + 1}`}
                       >
                         <X size={16} />
                       </button>
@@ -193,37 +245,56 @@ const MultiImageBookingModal = ({
                   </div>
                 ))}
 
+                {/* Upload Dropzone */}
                 <div
                   {...getRootProps()}
-                  className={`p-4  text-center rounded-md cursor-pointer hover:bg-primary/5  border-2 border-dashed border-gray-300 ${
+                  className={`cursor-pointer rounded-md border-2 border-dashed border-gray-300 p-4 text-center transition-colors hover:bg-primary/5 ${
                     isDragActive ? "border-primary bg-primary/10" : ""
                   }`}
                 >
                   <input {...getInputProps()} />
-                  {isDragActive ? (
-                    "Drop the image here..."
-                  ) : (
-                    <div className="aspect-square  rounded-lg  transition-colors flex flex-col items-center justify-center gap-2">
-                      <Plus className="w-8 h-8 text-gray-400" />
-                      <span className="text-xs text-gray-500">
-                        Drag drop here or click here to select
+
+                  <div className="flex aspect-square flex-col items-center justify-center gap-2 rounded-lg">
+                    {isDragActive ? (
+                      <span className="text-sm font-medium text-primary">
+                        Drop the images here...
                       </span>
-                    </div>
-                  )}
+                    ) : (
+                      <>
+                        <Plus className="h-8 w-8 text-gray-400" />
+
+                        <span className="text-xs text-gray-500">
+                          Drag & drop or click to select
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div className="relative bottom-0 left-0 right-0 flex gap-3 p-4 border-t bg-white z-50">
-                <Button variant="outline" className="flex-1" onClick={onClose}>
+              {/* Actions */}
+              <div className="flex gap-3 border-t bg-white p-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={handleClose}
+                  disabled={isSubmitting}
+                >
                   Cancel
                 </Button>
+
                 <Button
+                  type="button"
                   className="flex-1 bg-primary hover:bg-primary/90"
                   onClick={handleSubmit}
                   disabled={images.length === 0 || isSubmitting}
                 >
                   {isSubmitting ? (
-                    <Loader2 className="w-4 h-4  animate-spin" />
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
                   ) : (
                     `Submit ${images.length} Image${
                       images.length !== 1 ? "s" : ""
@@ -234,31 +305,42 @@ const MultiImageBookingModal = ({
             </div>
           </TabsContent>
 
+          {/* Already Uploaded */}
           <TabsContent value="preview">
-            <div className="space-y-6 mt-4 pb-20">
-              <h4 className="mt-4">Uploaded images</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {alreadySelectedImages.map((url, index) => (
-                  <div
-                    key={index}
-                    className="group relative aspect-square rounded-lg overflow-hidden bg-gray-100"
-                  >
-                    <img
-                      src={url}
-                      alt={`Upload ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <button
-                        onClick={() => removeAlreadyUploadedImages(url)}
-                        className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors"
-                      >
-                        <X size={16} />
-                      </button>
+            <div className="mt-4 space-y-6 pb-4">
+              <h4 className="font-medium text-gray-900">Uploaded images</h4>
+
+              {alreadySelectedImages.length > 0 ? (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                  {alreadySelectedImages.map((url, index) => (
+                    <div
+                      key={`${url}-${index}`}
+                      className="group relative aspect-square overflow-hidden rounded-lg bg-gray-100"
+                    >
+                      <img
+                        src={url}
+                        alt={`Uploaded image ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                          type="button"
+                          onClick={() => removeAlreadyUploadedImage(url)}
+                          className="rounded-full bg-red-500 p-2 text-white transition-colors hover:bg-red-600"
+                          aria-label={`Remove uploaded image ${index + 1}`}
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-10 text-center text-sm text-gray-500">
+                  No images uploaded yet.
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>
