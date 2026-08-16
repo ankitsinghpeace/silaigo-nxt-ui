@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -440,7 +440,7 @@ export const CartCheckoutForm: React.FC<Partial<CartCheckoutModalProps>> = ({
 
   const router = useRouter();
   const searchParams = router.query;
-  const setSearchParams = (params: Record<string, string>) => {
+  const setSearchParams = useCallback((params: Record<string, string>) => {
     router.push({
       pathname: router.pathname,
       query: {
@@ -448,10 +448,11 @@ export const CartCheckoutForm: React.FC<Partial<CartCheckoutModalProps>> = ({
         ...params,
       },
     });
-  };
+  }, [router]);
 
   const [hydrating, setHydrating] = useState(false);
   const [isNotesExpanded, setIsNotesExpanded] = useState(false);
+  const hasHydrated = useRef(false);
 
   useEffect(() => {
     const allowedKeys: (keyof CheckoutFormData)[] = [
@@ -467,7 +468,8 @@ export const CartCheckoutForm: React.FC<Partial<CartCheckoutModalProps>> = ({
     ];
 
     const pickupId = searchParams.pickupId;
-    if (pickupId) {
+    if (pickupId && !searchParams._phone && !hasHydrated.current) {
+      hasHydrated.current = true;
       setHydrating(true);
       getPickupByIdApi(pickupId)
         .then((pickup: any) => {
@@ -486,7 +488,8 @@ export const CartCheckoutForm: React.FC<Partial<CartCheckoutModalProps>> = ({
     }
 
     const phone = searchParams.phone;
-    if (phone) {
+    if (phone && !formValues.phone && !hasHydrated.current) {
+      hasHydrated.current = true;
       setFormValues({});
       setHydrating(true);
       getAddressViaPhone(phone)
@@ -504,7 +507,7 @@ export const CartCheckoutForm: React.FC<Partial<CartCheckoutModalProps>> = ({
         })
         .finally(() => setHydrating(false));
     }
-  }, [searchParams]);
+  }, [searchParams.pickupId, searchParams.phone, searchParams._phone, setSearchParams]);
 
   const handleChange = (id: keyof CheckoutFormData, value: any) => {
     setFormValues((prev) => ({ ...prev, [id]: value }));
