@@ -365,3 +365,54 @@ export const notifyOrderApi = async (
   });
   return res.data;
 };
+
+/**
+ * Returns an order for alteration: assigns a tailor + internal urgency
+ * (1=Immediate, 2=Priority, 3=Normal) and triggers the mandatory
+ * "Returned for Alteration" customer WhatsApp message on the backend.
+ *
+ * PENDING BACKEND: `POST /orders/:id/alteration` does not exist yet — see
+ * be_changes2.md.
+ */
+export const returnForAlterationApi = async (
+  orderId: string,
+  data: { tailorId: string; urgency: "1" | "2" | "3" },
+) => {
+  const res = await apiFetch<any>(`orders/${orderId}/alteration`, {
+    method: "POST",
+    body: data,
+    auth: true,
+  });
+  return res.data;
+};
+
+/**
+ * Manually sends the customer a review-request link. Never triggered
+ * automatically on Delivered — the Pickup Agent decides.
+ *
+ * PENDING BACKEND: `POST /orders/:id/review-link` does not exist yet — see
+ * be_changes2.md.
+ */
+export const sendReviewLinkApi = async (orderId: string) => {
+  const res = await apiFetch<any>(`orders/${orderId}/review-link`, {
+    method: "POST",
+    auth: true,
+  });
+  return res.data;
+};
+
+/**
+ * Public (no-auth) order tracker for the homepage "Track Your Order"
+ * widget. Must return ONLY customer-safe fields — no assignee names, no
+ * urgency, no internal timestamps/notes.
+ *
+ * PENDING BACKEND: `GET /orders/track/:orderId` does not exist yet — see
+ * be_changes2.md.
+ */
+export const trackOrderPublicApi = async (orderId: string) => {
+  const res = await apiFetch<any>(`orders/track/${encodeURIComponent(orderId)}`, {
+    method: "GET",
+    auth: false,
+  });
+  return res.data;
+};

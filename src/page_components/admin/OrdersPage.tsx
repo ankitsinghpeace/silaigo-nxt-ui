@@ -84,10 +84,15 @@ import { TabsContent } from "@radix-ui/react-tabs";
 import PickupsPage from "@/components/admin/PickupsPage";
 import AdminOrderDetailView from "@/page_components/admin/AdminOrderDetailView";
 import RoleQueueView from "@/components/admin/RoleQueueView";
+import DispatchQueueView from "@/components/admin/DispatchQueueView";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useRouter } from "@/lib/next-router-compat";
+import {
+  returnForAlterationApi,
+  sendReviewLinkApi,
+} from "@/services/modules/orders.api";
 
 const SEARCH_FIELDS = [
   { value: "orderId", label: "Order ID" },
@@ -328,7 +333,7 @@ const OrdersPage = () => {
   const { user } = useAuth();
   const [orderToDelete, setOrderToDelete] = useState(null);
   const [isMeasurementModalOpen, setIsMeasurementModalOpen] = useState(false);
-  const [tab, setTab] = useState<"orders" | "pickups" | "queue">("orders");
+  const [tab, setTab] = useState<"orders" | "pickups" | "queue" | "dispatch">("orders");
   const orderToEditMeasurement = useRef<string | null>(null);
   const [orderExistingMeasurementData, setOrderExistingMeasurementData] =
     useState({});
@@ -575,6 +580,49 @@ const OrdersPage = () => {
     );
   }, [selectedOrderId, orders, pinnedOrders]);
 
+  // return for alteration
+  const {
+    mutate: returnForAlteration,
+    isPending: isReturningForAlteration,
+  } = useMutation({
+    mutationFn: ({
+      orderId,
+      tailorId,
+      urgency,
+    }: {
+      orderId: string;
+      tailorId: string;
+      urgency: "1" | "2" | "3";
+    }) => returnForAlterationApi(orderId, { tailorId, urgency }),
+    onSuccess: () => {
+      toast({ title: "Returned for alteration", description: "Customer notified. Tailor assigned." });
+      refetchOrders();
+      queryClient.invalidateQueries({ queryKey: ["order-detail"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn't process alteration",
+        description: `${generateErrorMessage(error)} (needs backend "/orders/:id/alteration" — see be_changes2.md)`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // send review link (manual + optional)
+  const { mutate: sendReviewLink, isPending: isSendingReviewLink } = useMutation({
+    mutationFn: (orderId: string) => sendReviewLinkApi(orderId),
+    onSuccess: () => {
+      toast({ title: "Review link sent" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn't send review link",
+        description: `${generateErrorMessage(error)} (needs backend "/orders/:id/review-link" — see be_changes2.md)`,
+        variant: "destructive",
+      });
+    },
+  });
+
   const renderOrderDetail = (order: any) => (
     <AdminOrderDetailView
       order={order}
@@ -584,6 +632,9 @@ const OrdersPage = () => {
       isUpdatingPin={isUpdatingPin}
       isDuplicating={isCopyingOrder}
       showAdminActions={user?.role === UserRole.ADMIN}
+      currentUserRole={user?.role}
+      isReturningForAlteration={isReturningForAlteration}
+      isSendingReviewLink={isSendingReviewLink}
       onAssignStitchingAgent={(orderId, agentId) =>
         assignOrderToStitchingAgent({ orderId, agentId })
       }
@@ -605,6 +656,10 @@ const OrdersPage = () => {
         orderToEditMeasurement.current = orderId;
         setIsMeasurementModalOpen(true);
       }}
+      onReturnForAlteration={(orderId, tailorId, urgency) =>
+        returnForAlteration({ orderId, tailorId, urgency })
+      }
+      onSendReviewLink={(orderId) => sendReviewLink(orderId)}
     />
   );
 
@@ -844,7 +899,7 @@ const OrdersPage = () => {
       retry: false,
     });
 
-  const handleTabChange = (tab: "orders" | "pickups" | "queue") => {
+  const handleTabChange = (tab: "orders" | "pickups" | "queue" | "dispatch") => {
     if (tab === "orders") {
       const newQuery = { ...router.query };
       delete newQuery.all_orders;
@@ -1565,7 +1620,7 @@ const OrdersPage = () => {
         <Tabs
           value={tab}
           onValueChange={(v) => {
-            handleTabChange(v as "orders" | "pickups" | "queue");
+            handleTabChange(v as "orders" | "pickups" | "queue" | "dispatch");
           }}
           className="w-full mb-4"
         >
@@ -1599,6 +1654,16 @@ const OrdersPage = () => {
                 data-testid="tab-trigger-queue"
               >
                 {user?.role === UserRole.STITCHING ? "Stitching Queue" : "Cutting Queue"}
+              </TabsTrigger>
+            )}
+            {(user?.role === UserRole.ADMIN ||
+              user?.role === UserRole.PICKUP_COORDINATOR) && (
+              <TabsTrigger
+                value="dispatch"
+                className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
+                data-testid="tab-trigger-dispatch"
+              >
+                Ready to Dispatch
               </TabsTrigger>
             )}
             {user?.role != UserRole.ADMIN && (
@@ -2452,6 +2517,17 @@ const OrdersPage = () => {
                 role={user.role === UserRole.STITCHING ? "STITCHING" : "CUTTING"}
                 onOpenOrder={openOrderModal}
                 canEdit={canEdit}
+              />
+            </TabsContent>
+          )}
+
+          {(user.role === UserRole.ADMIN ||
+            user.role === UserRole.PICKUP_COORDINATOR) && (
+            <TabsContent value="dispatch">
+              <DispatchQueueView
+                onOpenOrder={openOrderModal}
+                canEdit={canEdit}
+                teamMembersViaRole={teamMembersViaRole}
               />
             </TabsContent>
           )}

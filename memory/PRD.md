@@ -1,104 +1,79 @@
-# SILAIGO Admin — PRD / Memory
+# SILAIGO — Order Workflow Redesign, Customer Tracking & WhatsApp Automation
 
-## Original problem statement
-> i have my admin ui, in which is not working properly, there are multiple issues we need to resolve:
-> 1. pagination, sorting, search and filter are not working on admin/customers and admin/orders
-> 2. orders page order detail should be optimized: orders grouped by customer name (correct), clicking
->    a row should open a modal with tabs (one per order), each tab showing a good admin view of order,
->    specs, delivery date, payment summary, customisations, and managing assignee + order status in ONE tab.
-> 3. Optimize the entire dashboard from a business perspective, mainly Orders and Customers, UI/UX and
->    functionality, no page breaks anywhere in admin.
->
-> Follow-up (approved via ask_human, phased): customer demographics for repeat customers/leads on
-> Customers page (YES), role-based queue dashboards for Cutting/Stitching sorted by delivery urgency (YES),
-> SMS notifications at key order stages via existing MSG91 integration (YES, backend endpoint pending),
-> broadcast/marketing messaging (SKIPPED — not requested this round).
+## Architecture reality check (read first)
+This repo is the **Next.js frontend only**. The real production backend
+lives at `https://api.silaigo.com` (separate codebase, not in this repo),
+backed by a real production MongoDB with real customer/order data.
+`/app/backend/server.py` here is a pod-only FastAPI reverse-proxy shim
+(forwards `/api/*` to the real backend) so the preview works — it is not
+the real backend and gets wiped whenever the pod resets (recreate it +
+the `/app/frontend -> /app` symlink + `package.json` `start` script
+(`next dev`) + `.env.development` `NEXT_PUBLIC_API_URL=/api` if the app
+won't boot in a fresh session).
 
-## Architecture
-- **This repo is a Next.js (App Router) FRONTEND ONLY app**, living at `/app` root (not `/app/frontend`).
-  It calls a live external production backend at `https://api.silaigo.com` — there is no backend
-  codebase here to modify.
-- Environment shim (pod-only, not meant for the user's real repo):
-  - `/app/backend/server.py` — a generic FastAPI reverse proxy forwarding all `/api/*` calls to
-    `https://api.silaigo.com/*` server-side (avoids browser CORS from the preview domain, since the
-    platform ingress intercepts `/api/*` to port 8001 before Next.js can apply its own rewrite).
-  - `/app/frontend` — a symlink to `/app` (so the supervisor's fixed `directory=/app/frontend` resolves).
-  - `package.json` `"start"` script changed to `"next dev -H 0.0.0.0 -p 3000"` for hot reload.
-  - `.env.development`: `NEXT_PUBLIC_API_URL=/api` (relative, routed through the proxy above).
-  - `next.config.ts`: added `allowedDevOrigins` for the preview domains.
-  - `/frontend` and `/backend` added to `.gitignore` so these pod-only shims don't pollute the user's
-    real GitHub repo structure.
+## Original ask
+Redesign SILAIGO's order status system into a simplified internal
+lifecycle (Pickup Created → Order Created → Order Fulfilled → Cutting
+Started/Ended → Assign Tailor → Stitching Started/Ended → Finishing & QC →
+Ready to Dispatch → Delivered, with a "Returned for Alteration" branch),
+add a customer WhatsApp opt-in checkbox, mandatory vs optional WhatsApp
+notifications, a public homepage "Track Your Order" widget with a
+customer-safe status model, manual/optional review-link, internal-only
+alteration urgency (1/2/3), and preserve all existing functionality/roles/
+historical orders. Full backend implementation is out of reach in this
+repo — documented instead in `/app/memory/be_changes2.md`.
 
-## Core requirements (static)
-- Admin roles: ADMIN, CUTTING, STITCHING, PICKUP_COORDINATOR (+ others). Order lifecycle:
-  `ORDER_INITIATED → ORDER_PLACED → MATERIAL_DELIVERED_TO_WORKSHOP → ORDER_FULFILLED (cutting queue) →
-  CUTTING_END (stitching queue) → STITCHING_END → PRODUCT_VERIFIED_OR_RECTIFIED → MATERIAL_PACKED →
-  READY_FOR_DISPATCH → ORDER_COMPLETE`.
+## What's been implemented (2026-08-16)
+**Frontend only** (backend changes fully spec'd in `be_changes2.md`):
+- Simplified 7-step visual "Order Progress" stepper (`OrderStatusStepper.tsx`)
+  in the admin order detail modal, grouping the existing 10
+  `orderProcessingState` values without changing the underlying enum.
+- Customer-safe status mapper (`lib/customerStatusMap.ts`) + presentational
+  `CustomerStatusStepper.tsx`, used on the new homepage **Track Your Order**
+  widget (`TrackOrderSection.tsx`, public — calls `GET /orders/track/:id`,
+  which doesn't exist on the backend yet, fails gracefully) and on the
+  logged-in customer `OrderDetailsPage.tsx` (renders only if backend starts
+  returning `orderProcessingState`).
+- New Pickup Agent "Ready to Dispatch" queue tab (`DispatchQueueView.tsx`)
+  with real "Delivered" action (existing processing-state + notify APIs)
+  and "Returned for Alteration" (`AlterationDialog.tsx`: tailor + internal
+  urgency 1/2/3) + "Send Review Link" (manual/optional) — the latter two
+  call new backend endpoints (`/orders/:id/alteration`,
+  `/orders/:id/review-link`) that don't exist yet; UI fails gracefully with
+  a toast pointing to `be_changes2.md`.
+- Cutting/Stitching queue (`RoleQueueView.tsx`): added a local-only (not
+  persisted) "Start Cutting/Stitching" → "End Cutting/Stitching" two-step
+  affordance ahead of real backend support for a persisted "Started" state.
+- "Customer wants WhatsApp updates" checkbox added to the order-creation
+  cart-checkout form (`CartCheckout.tsx`, both `CartCheckout` and
+  `CartCheckoutForm`), defaults to checked, flows into `customerData.whatsappOptIn`.
+- Fixed a pre-existing, unrelated but blocking bug: `Index.tsx` (homepage)
+  was a `"use client"` component directly rendering async Server Components
+  (`HeroCarousel`, etc.) — invalid in Next.js App Router, broke hydration
+  for the entire homepage (all click/typing handlers silently dead).
+  Converted `Index.tsx` into an async Server Component (removed dead
+  `useState`/`useRandomPopup` wiring that was already disabled/unused);
+  homepage interactivity — including the new Track widget — now works.
+- Tested via testing_agent (frontend-only, admin login, non-destructive):
+  all new UI verified rendering correctly with no regressions to existing
+  Processing State / Order Status / Assign Agent selects, Pin-to-Top, SMS
+  notify buttons. One real bug found (Track button hydration) — fixed and
+  self-verified afterward with a fresh screenshot.
 
-## What's been implemented (2026-08-13)
-- **Root-caused and fixed** the pagination/search/sort/filter bug: `searchParams.toString()` was called
-  on a plain object (from the `useRouter().query` compat hook), which always evaluated to the literal
-  string `"[object Object]"` — so React Query never re-fetched on filter changes AND the actual API call
-  received garbage params. Fixed in `OrdersPage.tsx`, `CustomersPage.tsx`, `ScheduledCallsPage.tsx`,
-  `BlogList.tsx`, `BlogPage.tsx` by building a real query string via `new URLSearchParams(...)`.
-  Verified end-to-end against live production data (filtering to "Order Completed" correctly narrowed
-  409 orders to 1).
-- **New `AdminOrderDetailView.tsx`** — replaces the old scattered 5-tab single-order modal and the
-  `renderOrderManageControls + embedded customer-facing OrderDetailsPage` combo in the Customer View
-  modal. One cohesive admin view per order: stat cards, style & customisations, delivery address,
-  measurements, payment summary, and a "Manage Order" panel (processing state, order status, assign
-  stitching agent, pin-to-top, SMS notify buttons, duplicate/delete/measurements actions), plus a
-  collapsible timeline. Used identically in both the Customer-grouped modal (one tab per order) and the
-  standalone single-order modal.
-- **Customer demographics**: new `useCustomerOrderStats` hook (client-side aggregation over
-  `/orders/all`, paginated) powers a new "Orders" column + "Repeat Customer" badge (2+ orders) on the
-  Customers page.
-- **Role-based queue dashboards**: new `RoleQueueView.tsx` + `orderStageConfig.ts` — a "Cutting Queue" /
-  "Stitching Queue" tab in Orders page (visible to ADMIN/CUTTING/STITCHING) showing orders waiting on
-  that stage, sorted by nearest delivery date, with urgency badges (Overdue/Xh left/Xd left) and a
-  "Mark Done" action that advances the order to the next processing stage.
-- **SMS notifications**: `notifyOrderApi` wired to "Notify Customer" buttons (Picked Up / Almost Ready /
-  Out for Delivery / Delivered) in the manage panel — calls `POST /orders/:id/notify`, which does not
-  exist on the backend yet (documented in `BACKEND_CHANGES_NEEDED.md`); fails gracefully with a toast
-  until the user's backend team implements it (MSG91, already used for OTP).
-- Fixed `AdminDashboard.tsx` requesting `limit=200` (backend caps at 100), which was breaking analytics.
-- Full test pass via testing_agent (100% frontend success rate); reverted a real production order's
-  status/pin state that got mutated during testing back to its original values.
+## Known gaps (see be_changes2.md for full spec)
+- No backend endpoints yet for: alteration assignment, review-link send,
+  public order tracking, WhatsApp sending (mandatory + optional events),
+  delay-notification job, persisted Cutting/Stitching "Started" timestamps,
+  `whatsappOptIn` persistence, `internalStage` migration.
+- Could not test the alteration/delivered/review-link buttons against a
+  live order because no real order currently sits in `READY_FOR_DISPATCH`.
 
-## Backend changes needed (logged for user's backend team)
-See `/app/memory/BACKEND_CHANGES_NEEDED.md`:
-1. `/orders/all` list endpoint missing many fields (customerPhone, productName, prices, paymentStatus,
-   orderStatus, pin state, etc.) — only the detail endpoint `/orders/:id` has them today.
-2. `/auth/customers` missing aggregated order stats (orderCount, totalSpent, lastOrderDate).
-3. New endpoint `POST /orders/:id/notify` for SMS stage updates (MSG91).
-4. Nice-to-have: `processingState` filter param on `/orders/all` for efficient role queues at scale.
+## Test credentials
+See `/app/memory/test_credentials.md` — only ADMIN credentials available;
+no dedicated PICKUP_COORDINATOR/CUTTING/STITCHING test accounts exist.
 
-## What's been implemented (2026-08-13, follow-up bug-fix round)
-- **Fixed critical z-index/modal-stacking bug**: the single-order detail modal used
-  `z-[60]`/`z-[61]` while Radix Select dropdowns and nested dialogs (Update Customisations/
-  Options/Measurements) default to `z-50` — so they rendered BEHIND the modal, making
-  dropdowns look unclickable and nested dialogs invisible. Fixed by aligning the modal back
-  to `z-50` (consistent with the Customer modal), relying on Radix's DOM-mount-order stacking.
-  Verified via testing_agent: dropdowns now open on top and nested dialogs render correctly.
-- Fixed `PickupsPage.tsx` React "unique key" console warning (key moved from inner `TableRow`
-  to a wrapping `React.Fragment`).
-- **Dashboard now has 3 tabs**: Overview (existing charts + new "Order Pipeline" stage-count
-  snapshot card), Team Workload (NEW — computes time-per-teammate from order `timeLine`
-  transitions; currently shows an honest empty state since the backend doesn't provide
-  `timeLine` data at all yet — see BACKEND_CHANGES_NEEDED.md item 1b), Customer Demographics
-  (NEW — order-frequency pie chart + top repeat customers table).
-- **Multi-order customer PDF export**: new "Export PDF" button in the Orders → Customer View
-  modal header generates one combined, well-organised PDF covering all of a customer's orders
-  (summary table + per-order style/customisations/measurements/address sections) via
-  `downloadCustomerOrdersPdf.ts` (jsPDF + autoTable).
-- Verified via testing_agent (100% pass, no destructive mutations needed reverting this round).
-
-## Prioritized backlog / next tasks
-- P1: Backend team to implement the 4 items above — once done, revisit Orders/Customers list-level
-  metrics (Value/Payments cards currently show ₹0 due to missing list fields) and make customer
-  demographics/queue filtering server-side instead of client-aggregated.
-- P2: Pickup workflow with GPS directions for pickup coordinator (mentioned by user, needs backend +
-  maps integration — not started).
-- P2: Broadcast/marketing messaging to repeat customers/leads (explicitly skipped this round, backlog).
-- P3: Delete-confirmation hardening (typed order-id confirm) before allowing delete on live production
-  orders from the admin UI — flagged by testing agent as a nice safety improvement.
+## Backlog / next steps
+- P0: Backend team implements `be_changes2.md` (migration, new endpoints, WhatsApp sending, delay job).
+- P1: Once backend adds persisted Cutting/Stitching "Started" timestamps, swap `RoleQueueView`'s local-storage toggle for the real API call.
+- P1: Once backend adds `orderProcessingState`/tracking fields to the public/customer APIs, no further frontend change needed — mappers already handle it.
+- P2: Split `OrdersPage.tsx` (2800+ lines) into per-tab files for maintainability (flagged by testing agent, not done this session — no functional impact).

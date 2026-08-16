@@ -205,7 +205,11 @@ export interface OrderDetailsProps {
     }>;
     imageUrls: string[];
     createdAt: string;
-    notes?: string
+    notes?: string;
+    /** Production lifecycle state — optional until always returned by the backend. */
+    orderProcessingState?: string;
+    /** Internal-only flag; never render alongside customer PII/urgency. */
+    isReturnedForAlteration?: boolean;
   };
   payment: {
     status: OrderStatus;

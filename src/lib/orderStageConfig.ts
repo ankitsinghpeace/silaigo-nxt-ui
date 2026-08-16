@@ -15,17 +15,39 @@ export const PROCESSING_STAGE_SEQUENCE: OrderProcessingState[] = [
 ];
 
 export const STAGE_LABELS: Record<string, string> = {
-  [OrderProcessingState.ORDER_INITIATED]: "Order Initiated",
+  [OrderProcessingState.ORDER_INITIATED]: "Order Created",
   [OrderProcessingState.ORDER_PLACED]: "Order Placed",
   [OrderProcessingState.MATERIAL_DELIVERED_TO_WORKSHOP]: "Material at Workshop",
-  [OrderProcessingState.ORDER_FULFILLED]: "Awaiting Cutting",
-  [OrderProcessingState.CUTTING_END]: "Cutting Done · Awaiting Stitching",
-  [OrderProcessingState.STITCHING_END]: "Stitching Done · Awaiting QC",
-  [OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED]: "QC Verified",
+  [OrderProcessingState.ORDER_FULFILLED]: "Order Fulfilled · Cutting Queue",
+  [OrderProcessingState.CUTTING_END]: "Cutting Ended",
+  [OrderProcessingState.STITCHING_END]: "Stitching Ended",
+  [OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED]: "Finishing & QC",
   [OrderProcessingState.MATERIAL_PACKED]: "Packed",
-  [OrderProcessingState.READY_FOR_DISPATCH]: "Ready for Dispatch",
+  [OrderProcessingState.READY_FOR_DISPATCH]: "Ready to Dispatch",
   [OrderProcessingState.ORDER_COMPLETE]: "Delivered",
 };
+
+/**
+ * Simplified primary progression for the visual order stepper (section 27
+ * of the workflow redesign) — groups the 10 fine-grained processing states
+ * into 7 clean, non-overlapping steps. The full-detail dropdown (using
+ * STAGE_LABELS/PROCESSING_STAGE_SEQUENCE above) remains available for
+ * admins who need the fine-grained value.
+ */
+export const PRIMARY_STAGE_GROUPS: { key: string; label: string; states: OrderProcessingState[] }[] = [
+  { key: "order_created", label: "Order Created", states: [OrderProcessingState.ORDER_INITIATED, OrderProcessingState.ORDER_PLACED] },
+  { key: "order_fulfilled", label: "Order Fulfilled", states: [OrderProcessingState.MATERIAL_DELIVERED_TO_WORKSHOP] },
+  { key: "cutting", label: "Cutting", states: [OrderProcessingState.ORDER_FULFILLED, OrderProcessingState.CUTTING_END] },
+  { key: "stitching", label: "Stitching", states: [OrderProcessingState.STITCHING_END] },
+  { key: "finishing_qc", label: "Finishing & QC", states: [OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED, OrderProcessingState.MATERIAL_PACKED] },
+  { key: "ready_to_dispatch", label: "Ready to Dispatch", states: [OrderProcessingState.READY_FOR_DISPATCH] },
+  { key: "delivered", label: "Delivered", states: [OrderProcessingState.ORDER_COMPLETE] },
+];
+
+export function getPrimaryGroupIndex(state?: string | null): number {
+  const idx = PRIMARY_STAGE_GROUPS.findIndex((g) => g.states.includes(state as OrderProcessingState));
+  return idx === -1 ? 0 : idx;
+}
 
 /**
  * Which processing stage should a role's "queue" surface as work waiting

@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, ArrowRight, Clock } from "lucide-react";
+import { Loader2, ArrowRight, Clock, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getAllOrders, updateOrdersProcessingState } from "@/services/modules/orders.api";
 import {
@@ -29,6 +29,35 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({ role, onOpenOrder, canEdi
   const queryClient = useQueryClient();
   const queueStage = ROLE_QUEUE_STAGE[role];
   const completionStage = ROLE_COMPLETION_STAGE[role];
+  const actionVerb = role === "STITCHING" ? "Stitching" : "Cutting";
+
+  // Local-only "Started" affordance (section 5-7): the backend doesn't yet
+  // persist an intermediate CUTTING_STARTED/STITCHING_STARTED state (see
+  // be_changes2.md), so we track it client-side to give the two-step
+  // Start/End UX without inventing a fake backend write.
+  const storageKey = `silai_${role.toLowerCase()}_started`;
+  const [startedIds, setStartedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (raw) setStartedIds(new Set(JSON.parse(raw)));
+    } catch {
+      // ignore malformed local state
+    }
+  }, [storageKey]);
+
+  const markStarted = (orderId: string) => {
+    setStartedIds((prev) => {
+      const next = new Set(prev);
+      next.add(orderId);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(storageKey, JSON.stringify(Array.from(next)));
+      }
+      return next;
+    });
+  };
 
   const { data, isPending, refetch } = useQuery({
     queryKey: ["role-queue", role],
@@ -58,8 +87,16 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({ role, onOpenOrder, canEdi
   const { mutate: advanceStage, isPending: isAdvancing, variables } = useMutation({
     mutationFn: (orderId: string) =>
       updateOrdersProcessingState(orderId, { nextState: completionStage }),
-    onSuccess: () => {
+    onSuccess: (_res, orderId) => {
       toast({ title: "Moved to next stage", description: STAGE_LABELS[completionStage] });
+      setStartedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(storageKey, JSON.stringify(Array.from(next)));
+        }
+        return next;
+      });
       refetch();
       queryClient.invalidateQueries({ queryKey: ["orders"] });
     },
@@ -128,19 +165,32 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({ role, onOpenOrder, canEdi
                   <Button size="sm" variant="outline" onClick={() => onOpenOrder(order.id)}>
                     View
                   </Button>
-                  <Button
-                    size="sm"
-                    disabled={!canEdit || isAdvancing}
-                    onClick={() => advanceStage(order.id)}
-                    data-testid={`queue-advance-btn-${order.id}`}
-                  >
-                    {isAdvancing && variables === order.id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
-                    ) : (
-                      <ArrowRight className="w-3.5 h-3.5 mr-1" />
-                    )}
-                    Mark Done
-                  </Button>
+                  {!startedIds.has(order.id) ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!canEdit}
+                      onClick={() => markStarted(order.id)}
+                      data-testid={`queue-start-btn-${order.id}`}
+                    >
+                      <Play className="w-3.5 h-3.5 mr-1" />
+                      Start {actionVerb}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      disabled={!canEdit || isAdvancing}
+                      onClick={() => advanceStage(order.id)}
+                      data-testid={`queue-advance-btn-${order.id}`}
+                    >
+                      {isAdvancing && variables === order.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                      ) : (
+                        <ArrowRight className="w-3.5 h-3.5 mr-1" />
+                      )}
+                      End {actionVerb}
+                    </Button>
+                  )}
                 </div>
               </div>
             );

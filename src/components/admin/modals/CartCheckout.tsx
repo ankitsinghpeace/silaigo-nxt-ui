@@ -17,6 +17,7 @@ import {
   getPickupByIdApi,
 } from "@/services/modules/orders.api";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, ChevronUp, ChevronDown, X } from "lucide-react";
 import { useRouter } from "@/lib/next-router-compat";
@@ -38,6 +39,8 @@ interface CheckoutFormData {
   date?: string;
   time?: string;
   notes?: string;
+  /** "Customer wants WhatsApp updates" — persisted against the order/customer. */
+  whatsappOptIn?: boolean;
 
   advance_collected?: number;
   tax_percentage?: number;
@@ -61,6 +64,7 @@ export const CartCheckout: React.FC<CartCheckoutModalProps> = ({
     phone: typeof window !== "undefined" ? localStorage.getItem("customerPhone") || "" : "",
     advance_collected: 0,
     extra_items: [],
+    whatsappOptIn: true,
   }));
 
   const [hydrating, setHydrating] = useState(false);
@@ -300,6 +304,19 @@ export const CartCheckout: React.FC<CartCheckoutModalProps> = ({
                 />
               </div>
 
+              {/* WhatsApp opt-in */}
+              <div className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2">
+                <Checkbox
+                  id="whatsappOptIn"
+                  checked={!!formValues.whatsappOptIn}
+                  onCheckedChange={(checked) => handleChange("whatsappOptIn", !!checked)}
+                  data-testid="whatsapp-optin-checkbox"
+                />
+                <Label htmlFor="whatsappOptIn" className="cursor-pointer font-normal">
+                  Customer wants WhatsApp updates
+                </Label>
+              </div>
+
               {/* Extra Items */}
               <div className="space-y-3">
                 <Label>Extra Items</Label>
@@ -398,6 +415,7 @@ export const CartCheckoutForm: React.FC<Partial<CartCheckoutModalProps>> = ({
     advance_collected: 0,
     extra_items: [],
     notes: "",
+    whatsappOptIn: true,
   }));
 
   const router = useRouter();
@@ -636,6 +654,19 @@ export const CartCheckoutForm: React.FC<Partial<CartCheckoutModalProps>> = ({
                   handleChange("advance_collected", Number(e.target.value))
                 }
               />
+            </div>
+
+            {/* WhatsApp opt-in */}
+            <div className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2">
+              <Checkbox
+                id="whatsappOptInForm"
+                checked={!!formValues.whatsappOptIn}
+                onCheckedChange={(checked) => handleChange("whatsappOptIn", !!checked)}
+                data-testid="whatsapp-optin-checkbox-form"
+              />
+              <Label htmlFor="whatsappOptInForm" className="cursor-pointer font-normal">
+                Customer wants WhatsApp updates
+              </Label>
             </div>
 
             {/* Sticky Notes Section */}

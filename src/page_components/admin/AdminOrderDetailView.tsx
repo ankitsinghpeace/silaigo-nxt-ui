@@ -39,6 +39,10 @@ import UpdateOrderCustomizations from "@/page_components/admin/UpdateOrderCustom
 import UpdateOrderOptions from "@/page_components/admin/UpdateOrderOptions";
 import { cn } from "@/lib/utils";
 import { PROCESSING_STAGE_SEQUENCE, STAGE_LABELS } from "@/lib/orderStageConfig";
+import { OrderProcessingState } from "@/types/enums";
+import OrderStatusStepper from "@/components/admin/OrderStatusStepper";
+import AlterationDialog from "@/components/admin/AlterationDialog";
+import { RotateCcw, Send, CheckCircle2 } from "lucide-react";
 
 const ORDER_STATUS_EDIT_OPTIONS = [OrderStatus.COMPLETED, OrderStatus.CANCELLED];
 
@@ -73,6 +77,9 @@ interface AdminOrderDetailViewProps {
   isUpdatingPin: boolean;
   isDuplicating: boolean;
   showAdminActions: boolean;
+  currentUserRole?: string;
+  isReturningForAlteration?: boolean;
+  isSendingReviewLink?: boolean;
   onAssignStitchingAgent: (orderId: string, agentId: string) => void;
   onUpdateProcessingState: (orderId: string, nextState: string) => void;
   onUpdateOrderStatus: (orderId: string, status: string) => void;
@@ -80,6 +87,8 @@ interface AdminOrderDetailViewProps {
   onDuplicate: (orderId: string) => void;
   onDelete: (orderId: string) => void;
   onEditMeasurements: (orderId: string, measurements: any) => void;
+  onReturnForAlteration?: (orderId: string, tailorId: string, urgency: "1" | "2" | "3") => void;
+  onSendReviewLink?: (orderId: string) => void;
 }
 
 const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
@@ -90,6 +99,9 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
   isUpdatingPin,
   isDuplicating,
   showAdminActions,
+  currentUserRole,
+  isReturningForAlteration,
+  isSendingReviewLink,
   onAssignStitchingAgent,
   onUpdateProcessingState,
   onUpdateOrderStatus,
@@ -97,12 +109,20 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
   onDuplicate,
   onDelete,
   onEditMeasurements,
+  onReturnForAlteration,
+  onSendReviewLink,
 }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showTimeline, setShowTimeline] = useState(false);
   const [isCustomizationsOpen, setIsCustomizationsOpen] = useState(false);
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+  const [isAlterationOpen, setIsAlterationOpen] = useState(false);
+
+  const canManageDispatch =
+    currentUserRole === "ADMIN" || currentUserRole === "PICKUP_COORDINATOR";
+  const isReadyToDispatch = order.orderProcessingState === OrderProcessingState.READY_FOR_DISPATCH;
+  const isDelivered = order.orderProcessingState === OrderProcessingState.ORDER_COMPLETE;
 
   const { data: detail, isLoading } = useQuery({
     queryKey: ["order-detail", order.id],
@@ -143,6 +163,27 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
 
   return (
     <div className="space-y-5" data-testid="admin-order-detail-view">
+      {/* Simplified visual order status stepper (section 27) */}
+      <div className="rounded-lg border p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Order Progress</h3>
+          {typeof order.whatsappOptIn === "boolean" && (
+            <span
+              className={cn(
+                "rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                order.whatsappOptIn
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-gray-200 bg-gray-50 text-gray-600",
+              )}
+              data-testid="whatsapp-optin-badge"
+            >
+              WhatsApp updates: {order.whatsappOptIn ? "Opted in" : "Opted out"}
+            </span>
+          )}
+        </div>
+        <OrderStatusStepper processingState={order.orderProcessingState} />
+      </div>
+
       {/* Quick facts */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
@@ -351,6 +392,51 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
               </div>
             </div>
 
+            {canManageDispatch && (isReadyToDispatch || isDelivered) && (
+              <div className="pt-2 border-t space-y-2">
+                <label className="text-xs text-muted-foreground">Dispatch Actions</label>
+                <div className="flex flex-wrap gap-2">
+                  {isReadyToDispatch && (
+                    <>
+                      <Button
+                        size="sm"
+                        disabled={!canEdit}
+                        onClick={() => onUpdateProcessingState(order.id, OrderProcessingState.ORDER_COMPLETE)}
+                        data-testid="mark-delivered-btn"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Delivered
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!canEdit}
+                        onClick={() => setIsAlterationOpen(true)}
+                        data-testid="return-for-alteration-btn"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5 mr-1" /> Returned for Alteration
+                      </Button>
+                    </>
+                  )}
+                  {isDelivered && onSendReviewLink && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!canEdit || isSendingReviewLink}
+                      onClick={() => onSendReviewLink(order.id)}
+                      data-testid="send-review-link-btn"
+                    >
+                      {isSendingReviewLink ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                      ) : (
+                        <Send className="w-3.5 h-3.5 mr-1" />
+                      )}
+                      Send Review Link (optional)
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="pt-2 border-t">
               <label className="text-xs text-muted-foreground mb-2 block flex items-center gap-1">
                 <MessageSquareText className="w-3 h-3" /> Notify Customer (SMS)
@@ -449,6 +535,19 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
           setIsOptionsOpen(false);
         }}
       />
+
+      {onReturnForAlteration && (
+        <AlterationDialog
+          open={isAlterationOpen}
+          onOpenChange={setIsAlterationOpen}
+          teamMembersViaRole={teamMembersViaRole}
+          isSubmitting={!!isReturningForAlteration}
+          onConfirm={({ tailorId, urgency }) => {
+            onReturnForAlteration(order.id, tailorId, urgency);
+            setIsAlterationOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };

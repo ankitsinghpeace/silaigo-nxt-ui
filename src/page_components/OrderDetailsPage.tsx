@@ -49,6 +49,8 @@ import { UserRole } from "@/services";
 import MultiImageBookingModal from "@/components/MultiImageBookingModal";
 import { cn } from "@/lib/utils";
 import { useRouter } from "@/lib/next-router-compat";
+import CustomerStatusStepper from "@/components/CustomerStatusStepper";
+import { mapProcessingStateToCustomerStage } from "@/lib/customerStatusMap";
 
 export const getStatusColor = (status: OrderStatus) => {
   switch (status) {
@@ -536,6 +538,19 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = ({
               )}
             </div>
           </Card>
+
+          {/* Order Tracking — customer-safe stepper (no internal fields). */}
+          {orderData.order?.orderProcessingState && (
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Order Tracking</h3>
+              <CustomerStatusStepper
+                stage={mapProcessingStateToCustomerStage(
+                  orderData.order.orderProcessingState,
+                  orderData.order.isReturnedForAlteration,
+                )}
+              />
+            </Card>
+          )}
 
           {/* Delivery Address Card */}
           {orderData.address && (
