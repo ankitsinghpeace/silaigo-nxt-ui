@@ -21,6 +21,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, ChevronUp, ChevronDown, X } from "lucide-react";
 import { useRouter } from "@/lib/next-router-compat";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 
 interface ExtraItem {
   name: string;
@@ -269,13 +273,29 @@ export const CartCheckout: React.FC<CartCheckoutModalProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="date">Delivery Date</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={formValues.date || ""}
-                    onChange={(e) => handleChange("date", e.target.value)}
-                    required
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal"
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formValues.date ? format(new Date(formValues.date), "PPP") : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={formValues.date ? new Date(formValues.date) : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            handleChange("date", format(date, "yyyy-MM-dd"));
+                          }
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div className="space-y-2">
@@ -621,13 +641,29 @@ export const CartCheckoutForm: React.FC<Partial<CartCheckoutModalProps>> = ({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="date">Delivery Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formValues.date || ""}
-                  onChange={(e) => handleChange("date", e.target.value)}
-                  required
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formValues.date ? format(new Date(formValues.date), "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={formValues.date ? new Date(formValues.date) : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          handleChange("date", format(date, "yyyy-MM-dd"));
+                        }
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="space-y-2">
