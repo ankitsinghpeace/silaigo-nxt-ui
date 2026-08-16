@@ -143,11 +143,19 @@ export const ORDER_TIMELINE_OPTIONS = [
     label: "Order Fulfilled",
   },
   {
-    value: OrderProcessingState.CUTTING_END,
+    value: OrderProcessingState.CUTTING_IN_PROGRESS,
+    label: "Cutting in Progress",
+  },
+  {
+    value: OrderProcessingState.CUTTING_COMPLETE,
     label: "Cutting Completed",
   },
   {
-    value: OrderProcessingState.STITCHING_END,
+    value: OrderProcessingState.STITCHING_IN_PROGRESS,
+    label: "Stitching in Progress",
+  },
+  {
+    value: OrderProcessingState.STITCHING_COMPLETE,
     label: "Stitching Completed",
   },
   {
@@ -341,6 +349,12 @@ const OrdersPage = () => {
   // Set initial tab based on user role
   useEffect(() => {
     if (user) {
+      // If orderId is present in URL, show orders tab regardless of role
+      if (searchParams.orderId) {
+        setTab("orders");
+        return;
+      }
+      
       if (user.role === UserRole.PICKUP_COORDINATOR) {
         setTab("pickups");
       } else if (
@@ -352,7 +366,25 @@ const OrdersPage = () => {
         setTab("orders");
       }
     }
-  }, [user]);
+  }, [user, searchParams.orderId]);
+
+  // Handle opening order modal when orderId is in URL
+  useEffect(() => {
+    if (searchParams.orderId && orders.length > 0) {
+      const order = orders.find((o: any) => o.orderId === searchParams.orderId);
+      if (order) {
+        setSelectedOrderId(order.id);
+        setIsOrderModalOpen(true);
+        // Clear the orderId from URL after opening the modal
+        const newQuery = { ...router.query };
+        delete newQuery.orderId;
+        router.push({
+          pathname: router.pathname,
+          query: newQuery,
+        });
+      }
+    }
+  }, [searchParams.orderId, orders]);
 
   const { toast } = useToast();
   const canView =
@@ -374,13 +406,13 @@ const OrdersPage = () => {
     //   setSearchParams(newParams);
     // }
 
-    if (user?.role === UserRole.CUTTING) {
+    if (user?.role === UserRole.CUTTING && !searchParams.orderId) {
       setSearchParams({
         startDate: "2026-02-05",
         sortBy: "oldest",
       });
     }
-  }, []);
+  }, [user?.role, searchParams.orderId]);
 
   // Don't render if user is not loaded yet
   if (!user) {

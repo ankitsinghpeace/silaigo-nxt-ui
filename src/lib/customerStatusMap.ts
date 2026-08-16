@@ -66,10 +66,12 @@ export function mapProcessingStateToCustomerStage(
     case OrderProcessingState.MATERIAL_DELIVERED_TO_WORKSHOP:
       return "order_received";
     case OrderProcessingState.ORDER_FULFILLED:
+    case OrderProcessingState.CUTTING_IN_PROGRESS:
       return "cutting";
-    case OrderProcessingState.CUTTING_END:
-    case OrderProcessingState.STITCHING_END:
+    case OrderProcessingState.CUTTING_COMPLETE:
+    case OrderProcessingState.STITCHING_IN_PROGRESS:
       return "stitching";
+    case OrderProcessingState.STITCHING_COMPLETE:
     case OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED:
     case OrderProcessingState.MATERIAL_PACKED:
     case OrderProcessingState.READY_FOR_DISPATCH:

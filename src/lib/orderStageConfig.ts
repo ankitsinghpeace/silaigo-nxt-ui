@@ -6,8 +6,10 @@ export const PROCESSING_STAGE_SEQUENCE: OrderProcessingState[] = [
   OrderProcessingState.ORDER_PLACED,
   OrderProcessingState.MATERIAL_DELIVERED_TO_WORKSHOP,
   OrderProcessingState.ORDER_FULFILLED,
-  OrderProcessingState.CUTTING_END,
-  OrderProcessingState.STITCHING_END,
+  OrderProcessingState.CUTTING_IN_PROGRESS,
+  OrderProcessingState.CUTTING_COMPLETE,
+  OrderProcessingState.STITCHING_IN_PROGRESS,
+  OrderProcessingState.STITCHING_COMPLETE,
   OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED,
   OrderProcessingState.MATERIAL_PACKED,
   OrderProcessingState.READY_FOR_DISPATCH,
@@ -19,8 +21,10 @@ export const STAGE_LABELS: Record<string, string> = {
   [OrderProcessingState.ORDER_PLACED]: "Order Placed",
   [OrderProcessingState.MATERIAL_DELIVERED_TO_WORKSHOP]: "Material at Workshop",
   [OrderProcessingState.ORDER_FULFILLED]: "Order Fulfilled · Cutting Queue",
-  [OrderProcessingState.CUTTING_END]: "Cutting Ended",
-  [OrderProcessingState.STITCHING_END]: "Stitching Ended",
+  [OrderProcessingState.CUTTING_IN_PROGRESS]: "Cutting in Progress",
+  [OrderProcessingState.CUTTING_COMPLETE]: "Cutting Complete",
+  [OrderProcessingState.STITCHING_IN_PROGRESS]: "Stitching in Progress",
+  [OrderProcessingState.STITCHING_COMPLETE]: "Stitching Complete",
   [OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED]: "Finishing & QC",
   [OrderProcessingState.MATERIAL_PACKED]: "Packed",
   [OrderProcessingState.READY_FOR_DISPATCH]: "Ready to Dispatch",
@@ -37,8 +41,8 @@ export const STAGE_LABELS: Record<string, string> = {
 export const PRIMARY_STAGE_GROUPS: { key: string; label: string; states: OrderProcessingState[] }[] = [
   { key: "order_created", label: "Order Created", states: [OrderProcessingState.ORDER_INITIATED, OrderProcessingState.ORDER_PLACED] },
   { key: "order_fulfilled", label: "Order Fulfilled", states: [OrderProcessingState.MATERIAL_DELIVERED_TO_WORKSHOP] },
-  { key: "cutting", label: "Cutting", states: [OrderProcessingState.ORDER_FULFILLED, OrderProcessingState.CUTTING_END] },
-  { key: "stitching", label: "Stitching", states: [OrderProcessingState.STITCHING_END] },
+  { key: "cutting", label: "Cutting", states: [OrderProcessingState.ORDER_FULFILLED, OrderProcessingState.CUTTING_IN_PROGRESS, OrderProcessingState.CUTTING_COMPLETE] },
+  { key: "stitching", label: "Stitching", states: [OrderProcessingState.STITCHING_IN_PROGRESS, OrderProcessingState.STITCHING_COMPLETE] },
   { key: "finishing_qc", label: "Finishing & QC", states: [OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED, OrderProcessingState.MATERIAL_PACKED] },
   { key: "ready_to_dispatch", label: "Ready to Dispatch", states: [OrderProcessingState.READY_FOR_DISPATCH] },
   { key: "delivered", label: "Delivered", states: [OrderProcessingState.ORDER_COMPLETE] },
@@ -53,17 +57,17 @@ export function getPrimaryGroupIndex(state?: string | null): number {
  * Which processing stage should a role's "queue" surface as work waiting
  * on them. e.g. Cutting staff should see orders sitting in ORDER_FULFILLED
  * (fabric fulfilled, waiting to be cut) — once they mark it done it becomes
- * CUTTING_END and drops into the Stitching queue.
+ * CUTTING_COMPLETE and drops into the Stitching queue.
  */
 export const ROLE_QUEUE_STAGE: Record<string, OrderProcessingState> = {
   CUTTING: OrderProcessingState.ORDER_FULFILLED,
-  STITCHING: OrderProcessingState.CUTTING_END,
+  STITCHING: OrderProcessingState.CUTTING_COMPLETE,
 };
 
 /** The stage a role moves an order INTO once they finish their queue item. */
 export const ROLE_COMPLETION_STAGE: Record<string, OrderProcessingState> = {
-  CUTTING: OrderProcessingState.CUTTING_END,
-  STITCHING: OrderProcessingState.STITCHING_END,
+  CUTTING: OrderProcessingState.CUTTING_COMPLETE,
+  STITCHING: OrderProcessingState.STITCHING_COMPLETE,
 };
 
 export const ROLE_QUEUE_TITLE: Record<string, string> = {

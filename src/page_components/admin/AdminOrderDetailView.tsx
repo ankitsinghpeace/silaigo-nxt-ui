@@ -15,6 +15,8 @@ import {
   DollarSign,
   ChevronDown,
   ChevronUp,
+  Play,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -123,6 +125,8 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
     currentUserRole === "ADMIN" || currentUserRole === "PICKUP_COORDINATOR";
   const isReadyToDispatch = order.orderProcessingState === OrderProcessingState.READY_FOR_DISPATCH;
   const isDelivered = order.orderProcessingState === OrderProcessingState.ORDER_COMPLETE;
+  const isCuttingMaster = currentUserRole === "CUTTING";
+  const canAssignTailor = isCuttingMaster || currentUserRole === "ADMIN";
 
   const { data: detail, isLoading } = useQuery({
     queryKey: ["order-detail", order.id],
@@ -353,24 +357,26 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                 </Select>
               </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-muted-foreground">Assign Stitching Agent</label>
-                <Select
-                  disabled={isAssigningToStitchingAgent || !canEdit}
-                  value={order.assignedToStitchingAgentId || "none"}
-                  onValueChange={(val) => onAssignStitchingAgent(order.id, val)}
-                >
-                  <SelectTrigger data-testid="order-assign-agent-select">
-                    <SelectValue placeholder="Unassigned" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Unassigned</SelectItem>
-                    {teamMembersViaRole?.map((el: any) => (
-                      <SelectItem key={el._id} value={el._id}>{el.firstName} {el.lastName}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {canAssignTailor && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">Assign Tailor</label>
+                  <Select
+                    disabled={isAssigningToStitchingAgent || !canEdit}
+                    value={order.assignedToStitchingAgentId || "none"}
+                    onValueChange={(val) => onAssignStitchingAgent(order.id, val)}
+                  >
+                    <SelectTrigger data-testid="order-assign-agent-select">
+                      <SelectValue placeholder="Unassigned" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Unassigned</SelectItem>
+                      {teamMembersViaRole?.map((el: any) => (
+                        <SelectItem key={el._id} value={el._id}>{el.firstName} {el.lastName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-muted-foreground">Pin to Top</label>
@@ -391,6 +397,31 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                 </div>
               </div>
             </div>
+
+            {isCuttingMaster && (
+              <div className="pt-2 border-t space-y-2">
+                <label className="text-xs text-muted-foreground">Cutting Actions</label>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    disabled={!canEdit}
+                    onClick={() => onUpdateProcessingState(order.id, OrderProcessingState.CUTTING_IN_PROGRESS)}
+                    data-testid="start-cutting-btn"
+                  >
+                    <Play className="w-3.5 h-3.5 mr-1" /> Start Cutting
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!canEdit}
+                    onClick={() => onUpdateProcessingState(order.id, OrderProcessingState.CUTTING_COMPLETE)}
+                    data-testid="end-cutting-btn"
+                  >
+                    <ArrowRight className="w-3.5 h-3.5 mr-1" /> End Cutting
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {canManageDispatch && (isReadyToDispatch || isDelivered) && (
               <div className="pt-2 border-t space-y-2">

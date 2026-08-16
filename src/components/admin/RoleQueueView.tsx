@@ -31,10 +31,7 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({ role, onOpenOrder, canEdi
   const completionStage = ROLE_COMPLETION_STAGE[role];
   const actionVerb = role === "STITCHING" ? "Stitching" : "Cutting";
 
-  // Local-only "Started" affordance (section 5-7): the backend doesn't yet
-  // persist an intermediate CUTTING_STARTED/STITCHING_STARTED state (see
-  // be_changes2.md), so we track it client-side to give the two-step
-  // Start/End UX without inventing a fake backend write.
+  // Local-only "Started" affordance (section 5-7): track which orders are currently being worked on
   const storageKey = `silai_${role.toLowerCase()}_started`;
   const [startedIds, setStartedIds] = useState<Set<string>>(new Set());
 

@@ -19,8 +19,8 @@ import Swal from "sweetalert2";
 
 const OrderProcessingStateTimeLineMap = {
     'Order fulfilled': OrderProcessingState.ORDER_PLACED,
-    'Cutting End': OrderProcessingState.CUTTING_END,
-    'Stitching End': OrderProcessingState.STITCHING_END,
+    'Cutting End': OrderProcessingState.CUTTING_COMPLETE,
+    'Stitching End': OrderProcessingState.STITCHING_COMPLETE,
 };
 
 
