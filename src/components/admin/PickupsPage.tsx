@@ -62,34 +62,48 @@ export default function PickupsPage() {
     },
   });
 
-  // const { archivedPickups, unarchivedPickups } = React.useMemo(() => {
-  //     if (!pickups || pickups.length === 0) {
-  //         return {
-  //             archivedPickups: [],
-  //             unarchivedPickups: [],
-  //         };
-  //     }
+  const filteredPickups = React.useMemo(() => {
+    if (!pickups || !Array.isArray(pickups)) return [];
+    let localCreatedIds: string[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        localCreatedIds = JSON.parse(
+          localStorage.getItem("createdOrderPickupIds") || "[]",
+        );
+      } catch (e) {}
+    }
 
-  //     const archived: any[] = [];
-  //     const unarchived: any[] = [];
+    return pickups.filter((pickup: any) => {
+      if (localCreatedIds.includes(pickup._id)) {
+        return false;
+      }
 
-  //     for (let i = 0; i < pickups.length; i++) {
-  //         const pickup = pickups[i];
-  //         const lastOption =
-  //             pickup.options?.[pickup.options.length - 1];
+      if (
+        pickup.orderCreated === true ||
+        pickup.isOrderCreated === true ||
+        pickup.isConvertedToOrder === true ||
+        pickup.isConverted === true ||
+        pickup.hasOrder === true ||
+        Boolean(pickup.orderId) ||
+        Boolean(pickup.order) ||
+        pickup.status === "ORDER_CREATED" ||
+        pickup.status === "CONVERTED" ||
+        pickup.status === "COMPLETED" ||
+        pickup.status === "FULFILLED"
+      ) {
+        return false;
+      }
 
-  //         if (lastOption?.value === true) {
-  //             archived.push(pickup);
-  //         } else {
-  //             unarchived.push(pickup);
-  //         }
-  //     }
+      if (Array.isArray(pickup.options) && pickup.options.length > 0) {
+        const lastOption = pickup.options[pickup.options.length - 1];
+        if (lastOption?.value === true) {
+          return false;
+        }
+      }
 
-  //     return {
-  //         archivedPickups: archived,
-  //         unarchivedPickups: unarchived,
-  //     };
-  // }, [pickups]);
+      return true;
+    });
+  }, [pickups]);
 
   function handleCheckboxChange(
     pickupId: string,
@@ -186,18 +200,16 @@ export default function PickupsPage() {
                   <TableHead className="p-3 text-left">
                     Pickup date & time
                   </TableHead>
-                  <TableHead className="p-3 text-left">Status</TableHead>
+                  {/* <TableHead className="p-3 text-left">Status</TableHead> */}
                   <TableHead className="p-3 text-left">Action</TableHead>
                 </TableRow>
               </thead>
 
               <tbody>
-                {pickups.length > 0 &&
-                  pickups.map((pickup: any) => (
+                {filteredPickups.length > 0 ? (
+                  filteredPickups.map((pickup: any) => (
                     <React.Fragment key={pickup._id}>
-                      <TableRow
-                        className="align-top border-b-0"
-                      >
+                      <TableRow className="align-top border-b-0">
                         <TableCell className="p-3 align-top">
                           {pickup.firstName}
                         </TableCell>
@@ -242,41 +254,14 @@ export default function PickupsPage() {
                           )}
                         </TableCell>
 
-                        <TableCell className="p-3 align-top">
-                          <div className="grid gap-2">
-                            {pickup.options.map((option: any) => (
-                              <label
-                                key={option.label}
-                                className="flex items-center gap-2"
-                              >
-                                <Checkbox
-                                  checked={option.value}
-                                  onCheckedChange={(val) =>
-                                    handleCheckboxChange(
-                                      pickup._id,
-                                      option.label,
-                                      Boolean(val),
-                                    )
-                                  }
-                                />
-                                <span>{option.label}</span>
-                              </label>
-                            ))}
-
-                            <Button
-                              size="sm"
-                              className="mt-2 w-fit"
-                              onClick={() => handleUpdate(pickup)}
-                              disabled={mutation.isPending}
-                            >
-                              Update
-                            </Button>
-                          </div>
-                        </TableCell>
-
                         <TableCell className="align-top flex gap-2 items-center">
                           <Link
                             href={`/admin/create-order?pickupId=${pickup._id}`}
+                            onClick={() => {
+                              if (typeof window !== "undefined") {
+                                localStorage.setItem("pickupId", pickup._id);
+                              }
+                            }}
                           >
                             <Button>Create Order</Button>
                           </Link>
@@ -295,7 +280,14 @@ export default function PickupsPage() {
                         </TableCell>
                       </TableRow>
                     </React.Fragment>
-                  ))}
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                      No active pickups found.
+                    </TableCell>
+                  </TableRow>
+                )}
               </tbody>
             </Table>
           </div>

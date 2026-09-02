@@ -74,16 +74,16 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed }) => {
       section: ["orders"],
     },
     {
+      name: "Customers",
+      icon: Users,
+      href: "/admin/customers",
+      section: ["customers", "orders"],
+    },
+    {
       name: "Coupons",
       icon: BadgePercent,
       href: "/admin/coupons",
       section: ["content"],
-    },
-    {
-      name: "Customers",
-      icon: Users,
-      href: "/admin/customers",
-      section: ["customers"],
     },
     {
       name: "User Management",

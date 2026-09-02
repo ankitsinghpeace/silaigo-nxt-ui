@@ -180,7 +180,7 @@ const DesignGrid = ({
           >
             <div className="aspect-square bg-gray-100 w-full overflow-hidden rounded-sm">
               <img
-                src={PlaceholderImage}
+                src={typeof PlaceholderImage === "string" ? PlaceholderImage : (PlaceholderImage as any)?.src || ""}
                 alt={"Upload custom designs"}
                 className="object-cover w-full h-full"
                 loading="lazy"
@@ -224,7 +224,7 @@ const DesignGrid = ({
                   <img
                     src={
                       !design.imageUrl || design.imageUrl === ""
-                        ? PlaceholderImage
+                        ? (typeof PlaceholderImage === "string" ? PlaceholderImage : (PlaceholderImage as any)?.src || "")
                         : design.imageUrl
                     }
                     alt={design.title}

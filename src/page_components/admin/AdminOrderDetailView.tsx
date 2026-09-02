@@ -31,7 +31,7 @@ import {
   getOrderByIdApi,
   notifyOrderApi,
 } from "@/services/modules/orders.api";
-import { OrderStatus, PaymentStatus } from "@/types/enums";
+import { OrderProcessingState, OrderStatus, PaymentStatus } from "@/types/enums";
 import MeasurementsTable from "@/components/MeasurementsTable";
 import ImagePreview from "@/components/admin/ImagePreview";
 import OrderTimelineView from "@/components/OrderTImeLineView";
@@ -68,6 +68,7 @@ const getPaymentBadge = (status?: string) => {
 interface AdminOrderDetailViewProps {
   order: any;
   canEdit: boolean;
+  isReadOnlyProcessingState?: boolean;
   teamMembersViaRole: any[];
   isAssigningToStitchingAgent: boolean;
   isUpdatingPin: boolean;
@@ -85,6 +86,7 @@ interface AdminOrderDetailViewProps {
 const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
   order,
   canEdit,
+  isReadOnlyProcessingState = false,
   teamMembersViaRole,
   isAssigningToStitchingAgent,
   isUpdatingPin,
@@ -140,6 +142,21 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
   const customizations = detail?.priceBreakup?.customizations || [];
   const paymentBadge = getPaymentBadge(paymentStatus);
   const PaymentIcon = paymentBadge.icon;
+  const allImageUrls: string[] = Array.isArray(order.imageUrls)
+    ? order.imageUrls
+    : Array.isArray(detail?.order?.imageUrls)
+    ? detail.order.imageUrls
+    : Array.isArray(detail?.imageUrls)
+    ? detail.imageUrls
+    : [];
+
+  const fabricImageUrl =
+    allImageUrls.find(
+      (url: string) => typeof url === "string" && url.toLowerCase().includes("fabric"),
+    ) ||
+    allImageUrls[0] ||
+    detail?.style?.image ||
+    order.productImage;
 
   return (
     <div className="space-y-5" data-testid="admin-order-detail-view">
@@ -176,11 +193,11 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
             ) : (
               <div className="flex flex-col sm:flex-row gap-4">
-                {detail?.style?.image && (
+                {fabricImageUrl && (
                   <ImagePreview
-                    src={detail.style.image}
+                    src={fabricImageUrl}
                     alt={productName}
-                    className="h-28 w-28 shrink-0 rounded-lg object-cover"
+                    className="h-44 w-44 shrink-0 rounded-lg object-cover"
                     showRemoveButton={false}
                   />
                 )}
@@ -281,55 +298,26 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-muted-foreground">Processing State</label>
                 <Select
-                  value={order.orderProcessingState}
+                  value={
+                    order.orderProcessingState === OrderProcessingState.ORDER_FULFILLED
+                      ? OrderProcessingState.ORDER_FULFILLED
+                      : OrderProcessingState.ORDER_PLACED
+                  }
                   onValueChange={(val) => onUpdateProcessingState(order.id, val)}
                 >
-                  <SelectTrigger disabled={!canEdit} data-testid="order-processing-state-select">
+                  <SelectTrigger disabled={!canEdit || isReadOnlyProcessingState} data-testid="order-processing-state-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {PROCESSING_STAGE_SEQUENCE.map((stage) => (
-                      <SelectItem key={stage} value={stage}>{STAGE_LABELS[stage]}</SelectItem>
-                    ))}
+                    <SelectItem value={OrderProcessingState.ORDER_PLACED}>Order Created</SelectItem>
+                    <SelectItem value={OrderProcessingState.ORDER_FULFILLED}>Order Fulfilled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-muted-foreground">Order Status</label>
-                <Select
-                  value={order.orderStatus || ""}
-                  onValueChange={(val) => onUpdateOrderStatus(order.id, val)}
-                >
-                  <SelectTrigger disabled={!canEdit} data-testid="order-status-select">
-                    <SelectValue placeholder="Keep current" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ORDER_STATUS_EDIT_OPTIONS.map((s) => (
-                      <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-muted-foreground">Assign Stitching Agent</label>
-                <Select
-                  disabled={isAssigningToStitchingAgent || !canEdit}
-                  value={order.assignedToStitchingAgentId || "none"}
-                  onValueChange={(val) => onAssignStitchingAgent(order.id, val)}
-                >
-                  <SelectTrigger data-testid="order-assign-agent-select">
-                    <SelectValue placeholder="Unassigned" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Unassigned</SelectItem>
-                    {teamMembersViaRole?.map((el: any) => (
-                      <SelectItem key={el._id} value={el._id}>{el.firstName} {el.lastName}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+
+
 
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-muted-foreground">Pin to Top</label>

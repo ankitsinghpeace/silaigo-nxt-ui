@@ -19,7 +19,7 @@ const ROUTE_SECTIONS: Record<string, string[]> = {
   "/admin/content/category": ["inventory"],
   "/admin/content/blog": ["content"],
   "/admin/coupons": ["content"],
-  "/admin/customers": ["customers"],
+  "/admin/customers": ["customers", "orders"],
   "/admin/scheduled-phone-calls": ["customers"],
   "/admin/users": ["users"],
   "/admin/settings": ["settings", "appointments"],

@@ -142,7 +142,7 @@ export default function UpdateOrderCustomizations({
                         <img
                           src={
                             !design.imageUrl || design.imageUrl === ""
-                              ? PlaceholderImage
+                              ? (typeof PlaceholderImage === "string" ? PlaceholderImage : (PlaceholderImage as any)?.src || "")
                               : design.imageUrl
                           }
                           alt={design.title}

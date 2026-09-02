@@ -16,7 +16,9 @@ import {
   AdminEditCustomer,
   editCustomer,
   addUserByadmin,
+  UserRole,
 } from "@/services/auth.api";
+import { getAllOrders } from "@/services/modules/orders.api";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Gender, PermissionSubType, PermissionType } from "@/types/enums";
 import {
@@ -122,15 +124,24 @@ const CustomersPage = () => {
     useState<AdminEditCustomer | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const { user } = useAuth();
-  const canEdit = user?.permissions?.includes(
-    `${PermissionType.CUSTOMERS}.${PermissionSubType.EDIT}`,
-  );
-  const canDelete = user?.permissions?.includes(
-    `${PermissionType.CUSTOMERS}.${PermissionSubType.DELETE}`,
-  );
-  const canAdd = user?.permissions?.includes(
-    `${PermissionType.CUSTOMERS}.${PermissionSubType.CREATE}`,
-  );
+  const canEdit =
+    user?.role === UserRole.ADMIN ||
+    user?.role === UserRole.PICKUP_COORDINATOR ||
+    user?.permissions?.includes(
+      `${PermissionType.CUSTOMERS}.${PermissionSubType.EDIT}`,
+    );
+  const canDelete =
+    user?.role === UserRole.ADMIN ||
+    user?.role === UserRole.PICKUP_COORDINATOR ||
+    user?.permissions?.includes(
+      `${PermissionType.CUSTOMERS}.${PermissionSubType.DELETE}`,
+    );
+  const canAdd =
+    user?.role === UserRole.ADMIN ||
+    user?.role === UserRole.PICKUP_COORDINATOR ||
+    user?.permissions?.includes(
+      `${PermissionType.CUSTOMERS}.${PermissionSubType.CREATE}`,
+    );
 
   // Get active filters directly from searchParams
   const activeFilters = SEARCH_FIELDS.filter((field) =>
@@ -181,7 +192,63 @@ const CustomersPage = () => {
     refetch: refetchCustomerList,
   } = useQuery({
     queryKey: ["customers", queryString],
-    queryFn: () => getCustomersList(queryString),
+    queryFn: async () => {
+      try {
+        return await getCustomersList(queryString);
+      } catch (err: any) {
+        console.warn("getCustomersList API returned forbidden/error, loading customer list from orders", err);
+        const ordersRes = await getAllOrders("all_orders=1&limit=100");
+        const ordersList = ordersRes?.orders || [];
+
+        const customerMap: Record<string, any> = {};
+        ordersList.forEach((o: any) => {
+          const key = o.customerPhone || o.customerEmail || o.customerName || o.customerId;
+          if (!key) return;
+          if (!customerMap[key]) {
+            const nameParts = (o.customerName || "").trim().split(" ");
+            const firstName = nameParts[0] || "Customer";
+            const lastName = nameParts.slice(1).join(" ") || "";
+
+            customerMap[key] = {
+              userId: o.customerId || key,
+              firstName,
+              lastName,
+              phone: o.customerPhone || "",
+              email: o.customerEmail || "",
+              createdAt: o.orderDate || new Date().toISOString(),
+              addressLine1: o.address?.addressLine1 || "",
+              city: o.address?.city || "",
+              state: o.address?.state || "",
+              pincode: o.address?.pincode || "",
+              notes: o.notes || "",
+            };
+          }
+        });
+
+        let fallbackCustomers = Object.values(customerMap);
+
+        const rawSearch = (searchParams.search || searchParams.name || searchParams.email || searchParams.phone || "").toLowerCase();
+        if (rawSearch) {
+          fallbackCustomers = fallbackCustomers.filter(
+            (c: any) =>
+              (c.firstName + " " + c.lastName).toLowerCase().includes(rawSearch) ||
+              (c.phone || "").toLowerCase().includes(rawSearch) ||
+              (c.email || "").toLowerCase().includes(rawSearch) ||
+              (c.notes || "").toLowerCase().includes(rawSearch),
+          );
+        }
+
+        return {
+          customers: fallbackCustomers,
+          pagination: {
+            total: fallbackCustomers.length,
+            page: 1,
+            limit: fallbackCustomers.length,
+            totalPages: 1,
+          },
+        };
+      }
+    },
   });
 
   let customers = data?.customers || [];

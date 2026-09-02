@@ -43,6 +43,16 @@ const initialMeasurements = {
     details: {},
   },
 };
+const getImgSrc = (src?: any) => {
+  if (!src) {
+    return typeof PlaceholderImage === "string"
+      ? PlaceholderImage
+      : (PlaceholderImage as any)?.src || "";
+  }
+  if (typeof src === "string") return src;
+  return src?.src || src;
+};
+
 export default function CategoryPage() {
   /* ===================== STATES ===================== */
   const navigate = useRouter();
@@ -59,8 +69,13 @@ export default function CategoryPage() {
   >(null);
   const [customPrice, setCustomPrice] = useState<number | null>(null);
   const [isImageModalOpened, setIsImageModalOpened] = useState(false);
-  const [selectedImages, setSelectedImages] = useState([]);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const imageType = useRef("");
+
+  const fabricImage =
+    selectedImages.find((url: string) =>
+      url.toLowerCase().includes("fabric"),
+    ) || (selectedImages.length > 0 ? selectedImages[0] : null);
 
   // measurements state
   // tab1 tailoring options
@@ -300,6 +315,24 @@ export default function CategoryPage() {
       return cartCheckoutApi(payload);
     },
     onSuccess: () => {
+      if (typeof window !== "undefined") {
+        const pId = localStorage.getItem("pickupId");
+        if (pId) {
+          try {
+            const createdPickups = JSON.parse(
+              localStorage.getItem("createdOrderPickupIds") || "[]",
+            );
+            if (!createdPickups.includes(pId)) {
+              createdPickups.push(pId);
+              localStorage.setItem(
+                "createdOrderPickupIds",
+                JSON.stringify(createdPickups),
+              );
+            }
+          } catch (e) {}
+          localStorage.removeItem("pickupId");
+        }
+      }
       toast({
         title: "Order placed",
         description: "The order has been successfully placed",
@@ -524,8 +557,9 @@ export default function CategoryPage() {
                     `}
                     >
                       <img
-                        src={style.image || PlaceholderImage}
+                        src={getImgSrc(style.image)}
                         className="w-full aspect-square object-cover"
+                        alt={style.name}
                       />
                       <div className="p-2 text-center">
                         <p className="font-medium">{style.name}</p>
@@ -558,15 +592,20 @@ export default function CategoryPage() {
               imageType.current = "Fabric";
               setIsImageModalOpened(true);
             }}
-            className={`border w-[50%] md:w-[20%] rounded overflow-hidden cursor-pointer
-                    `}
+            className={`border w-[50%] md:w-[20%] rounded overflow-hidden cursor-pointer ${
+              fabricImage ? "ring-2 ring-primary" : ""
+            }`}
           >
             <img
-              src={PlaceholderImage}
+              src={getImgSrc(fabricImage)}
               className="w-full aspect-square object-cover"
+              alt="Fabric"
             />
-            <div className="p-2 text-center">
+            <div className="p-2 text-center flex flex-col items-center gap-1">
               <p className="font-medium">Fabric</p>
+              {fabricImage && (
+                <span className="text-xs text-primary font-semibold">Image Added</span>
+              )}
             </div>
           </div>
 
@@ -598,8 +637,9 @@ export default function CategoryPage() {
                     `}
                       >
                         <img
-                          src={design.imageUrl || PlaceholderImage}
+                          src={getImgSrc(design.imageUrl)}
                           className="w-full aspect-square object-cover"
+                          alt={design.title}
                         />
                         <div className="p-2 text-center">
                           <p className="font-medium">{design.title}</p>
@@ -665,7 +705,7 @@ export default function CategoryPage() {
             {/* IMAGE */}
             <div className="w-24 h-24 rounded overflow-hidden bg-muted flex-shrink-0">
               <img
-                src={item.meta?.style?.image || PlaceholderImage}
+                src={getImgSrc(item.meta?.style?.image || item.imageUrls?.[0])}
                 alt={item.meta?.style?.name || "Style"}
                 className="w-full h-full object-cover"
               />
