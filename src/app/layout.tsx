@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Montserrat } from "next/font/google";
+import { GoogleTagManager, GoogleAnalytics } from "@next/third-parties/google";
 import "./index.css";
 import Providers from "./providers";
 
@@ -85,8 +86,11 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const gtmId = process.env.NEXT_PUBLIC_GTM_ID || "GTM-K46KCS68";
+
   return (
     <html lang="en" className={`${playfair.variable} ${montserrat.variable}`}>
+      {gtmId && <GoogleTagManager gtmId={gtmId} />}
       <body>
         <script
           type="application/ld+json"
