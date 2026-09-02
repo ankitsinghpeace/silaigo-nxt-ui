@@ -428,7 +428,14 @@ export const CartCheckoutForm: React.FC<Partial<CartCheckoutModalProps>> = ({
       "time",
     ];
 
-    const pickupId = searchParams.pickupId;
+    const rawPickupId = searchParams.pickupId;
+    const pickupId = Array.isArray(rawPickupId) ? rawPickupId[0] : rawPickupId;
+    const rawPhone = searchParams.phone;
+    const phone = Array.isArray(rawPhone) ? rawPhone[0] : rawPhone;
+    const currentUnderPhone = Array.isArray(searchParams._phone)
+      ? searchParams._phone[0]
+      : searchParams._phone;
+
     if (pickupId) {
       setHydrating(true);
       getPickupByIdApi(pickupId)
@@ -441,13 +448,14 @@ export const CartCheckoutForm: React.FC<Partial<CartCheckoutModalProps>> = ({
           });
           hydrated["name"] = `${pickup.firstName} ${pickup.lastName || ""}`;
           setFormValues((prev) => ({ ...prev, ...hydrated }));
-          setSearchParams({ _phone: pickup.phone });
+          if (pickup.phone && currentUnderPhone !== pickup.phone) {
+            setSearchParams({ _phone: pickup.phone });
+          }
         })
         .finally(() => setHydrating(false));
       return;
     }
 
-    const phone = searchParams.phone;
     if (phone) {
       setFormValues({});
       setHydrating(true);
@@ -466,7 +474,7 @@ export const CartCheckoutForm: React.FC<Partial<CartCheckoutModalProps>> = ({
         })
         .finally(() => setHydrating(false));
     }
-  }, [searchParams]);
+  }, [searchParams.pickupId, searchParams.phone]);
 
   const handleChange = (id: keyof CheckoutFormData, value: any) => {
     setFormValues((prev) => ({ ...prev, [id]: value }));

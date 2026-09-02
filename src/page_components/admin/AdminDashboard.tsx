@@ -281,171 +281,171 @@ const AdminDashboard = () => {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4 focus:outline-none">
-        {/* Pipeline snapshot */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Order Pipeline — where things are stuck</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              {pipeline.map((p) => (
-                <div key={p.stage} className="rounded-lg border bg-muted/30 p-3" data-testid={`pipeline-stage-${p.stage}`}>
-                  <div className="text-2xl font-bold">{p.count}</div>
-                  <div className="text-[11px] text-muted-foreground leading-tight mt-1">{p.label}</div>
+            {/* Pipeline snapshot */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Order Pipeline — where things are stuck</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  {pipeline.map((p) => (
+                    <div key={p.stage} className="rounded-lg border bg-muted/30 p-3" data-testid={`pipeline-stage-${p.stage}`}>
+                      <div className="text-2xl font-bold">{p.count}</div>
+                      <div className="text-[11px] text-muted-foreground leading-tight mt-1">{p.label}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        {/* Charts */}
-        <div className="grid gap-4 lg:grid-cols-3">
-          <Card className="lg:col-span-2">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Revenue — last 14 days</CardTitle>
-            </CardHeader>
-            <CardContent className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trend} margin={{ left: -10, right: 8, top: 8 }}>
-                  <defs>
-                    <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                  <XAxis dataKey="label" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis fontSize={11} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    formatter={(v: any, n: any) =>
-                      n === "revenue" ? [`₹${Number(v).toLocaleString()}`, "Revenue"] : [v, "Orders"]
-                    }
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    fill="url(#rev)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Orders by status</CardTitle>
-            </CardHeader>
-            <CardContent className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={statusData}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={55}
-                    outerRadius={85}
-                    paddingAngle={2}
-                  >
-                    {statusData.map((_, i) => (
-                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-3">
-          <Card className="lg:col-span-2">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Top products by revenue</CardTitle>
-            </CardHeader>
-            <CardContent className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topProducts} margin={{ left: -10, right: 8, top: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                  <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis fontSize={11} tickLine={false} axisLine={false} />
-                  <Tooltip formatter={(v: any) => `₹${Number(v).toLocaleString()}`} />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Recent orders</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 max-h-[280px] overflow-auto">
-              {orders.slice(0, 8).map((o) => (
-                <Link
-                  key={o.id}
-                  href="/admin/orders"
-                  className="flex items-center justify-between rounded-md border px-3 py-2 hover:bg-muted/50 transition-colors"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {o.customerName || "Customer"}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {o.productName || o.orderId}
-                    </p>
-                  </div>
-                  <span className="text-sm font-semibold whitespace-nowrap">
-                    ₹{orderAmount(o).toLocaleString()}
-                  </span>
-                </Link>
-              ))}
-              {!orders.length && !isPending && (
-                <p className="text-sm text-muted-foreground">No orders yet.</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Quick links */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {staticTiles.map((tile) => (
-            <Link href={tile.href} key={tile.title}>
-              <Card className="hover-lift cursor-pointer h-full">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    {tile.title}
-                  </CardTitle>
-                  <div className="bg-primary/10 p-2 rounded-full">
-                    <tile.icon className="h-4 w-4 text-primary" />
-                  </div>
+            {/* Charts */}
+            <div className="grid gap-4 lg:grid-cols-3">
+              <Card className="lg:col-span-2">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Revenue — last 14 days</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-muted-foreground">
-                    {tile.description}
-                  </p>
+                <CardContent className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={trend} margin={{ left: -10, right: 8, top: 8 }}>
+                      <defs>
+                        <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                      <XAxis dataKey="label" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis fontSize={11} tickLine={false} axisLine={false} />
+                      <Tooltip
+                        formatter={(v: any, n: any) =>
+                          n === "revenue" ? [`₹${Number(v).toLocaleString()}`, "Revenue"] : [v, "Orders"]
+                        }
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        fill="url(#rev)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
-            </Link>
-          ))}
-        </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-primary" /> Daily checklist
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-              <li>Review scheduled calls before 11am daily.</li>
-              <li>Keep categories & offers updated for smoother customer journeys.</li>
-              <li>Keep communication clear with tailors about order expectations.</li>
-            </ul>
-          </CardContent>
-        </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Orders by status</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={statusData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={55}
+                        outerRadius={85}
+                        paddingAngle={2}
+                      >
+                        {statusData.map((_, i) => (
+                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-3">
+              <Card className="lg:col-span-2">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Top products by revenue</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topProducts} margin={{ left: -10, right: 8, top: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                      <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis fontSize={11} tickLine={false} axisLine={false} />
+                      <Tooltip formatter={(v: any) => `₹${Number(v).toLocaleString()}`} />
+                      <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Recent orders</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 max-h-[280px] overflow-auto">
+                  {orders.slice(0, 8).map((o) => (
+                    <Link
+                      key={o.id}
+                      href="/admin/orders"
+                      className="flex items-center justify-between rounded-md border px-3 py-2 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {o.customerName || "Customer"}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {o.productName || o.orderId}
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold whitespace-nowrap">
+                        ₹{orderAmount(o).toLocaleString()}
+                      </span>
+                    </Link>
+                  ))}
+                  {!orders.length && !isPending && (
+                    <p className="text-sm text-muted-foreground">No orders yet.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Quick links */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {staticTiles.map((tile) => (
+                <Link href={tile.href} key={tile.title}>
+                  <Card className="hover-lift cursor-pointer h-full">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                      <CardTitle className="text-sm font-medium">
+                        {tile.title}
+                      </CardTitle>
+                      <div className="bg-primary/10 p-2 rounded-full">
+                        <tile.icon className="h-4 w-4 text-primary" />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-xs text-muted-foreground">
+                        {tile.description}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-primary" /> Daily checklist
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                  <li>Review scheduled calls before 11am daily.</li>
+                  <li>Keep categories & offers updated for smoother customer journeys.</li>
+                  <li>Keep communication clear with tailors about order expectations.</li>
+                </ul>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="workload" className="focus:outline-none">

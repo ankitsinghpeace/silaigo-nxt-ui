@@ -358,7 +358,7 @@ export const MeasurementsModal: React.FC<TailoringFormModalProps> = ({
                                       (formValues1[detail.id]?.[opt.id] ===
                                         "yes" ||
                                         formValues1[detail.id]?.[opt.id] ===
-                                          "y")
+                                        "y")
                                     }
                                     value={
                                       opt.type === "text"
@@ -609,17 +609,17 @@ export const MeasurementsForm: React.FC<any> = ({ measurementState }) => {
   );
 
   useEffect(() => {
-    const phone1 = searchParams.phone;
-    const phone2 = searchParams._phone;
+    const rawPhone1 = searchParams.phone;
+    const phone1 = Array.isArray(rawPhone1) ? rawPhone1[0] : rawPhone1;
+    const rawPhone2 = searchParams._phone;
+    const phone2 = Array.isArray(rawPhone2) ? rawPhone2[0] : rawPhone2;
 
     if (phone1) {
       setPhone(phone1);
-    }
-
-    if (phone2) {
+    } else if (phone2) {
       setPhone(phone2);
     }
-  }, [searchParams]);
+  }, [searchParams.phone, searchParams._phone]);
 
   const prefillBodyMeasurements = (cat) => {
     if (typeof window === "undefined") return;

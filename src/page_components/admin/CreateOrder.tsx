@@ -214,16 +214,16 @@ export default function CategoryPage() {
       meta: {
         category: selectedCategory
           ? {
-              id: selectedCategory._id,
-              name: selectedCategory.name,
-            }
+            id: selectedCategory._id,
+            name: selectedCategory.name,
+          }
           : null,
         style: selectedStyle
           ? {
-              id: selectedStyle._id,
-              name: selectedStyle.name,
-              image: selectedStyle.image || PlaceholderImage,
-            }
+            id: selectedStyle._id,
+            name: selectedStyle.name,
+            image: selectedStyle.image || PlaceholderImage,
+          }
           : null,
         selectedCategoryId,
       },
