@@ -515,24 +515,30 @@ const OrdersPage = () => {
   const rawPinnedOrders = data?.pinnedOrderList || [];
 
   const orders = useMemo(() => {
-    if (searchParams.all_orders === "1") {
+    if (
+      user?.role !== UserRole.PICKUP_COORDINATOR ||
+      searchParams.all_orders === "1"
+    ) {
       return rawOrders;
     }
     return rawOrders.filter(
       (order: any) =>
         order.orderProcessingState !== OrderProcessingState.ORDER_FULFILLED,
     );
-  }, [rawOrders, searchParams.all_orders]);
+  }, [rawOrders, searchParams.all_orders, user?.role]);
 
   const pinnedOrders = useMemo(() => {
-    if (searchParams.all_orders === "1") {
+    if (
+      user?.role !== UserRole.PICKUP_COORDINATOR ||
+      searchParams.all_orders === "1"
+    ) {
       return rawPinnedOrders;
     }
     return rawPinnedOrders.filter(
       (order: any) =>
         order.orderProcessingState !== OrderProcessingState.ORDER_FULFILLED,
     );
-  }, [rawPinnedOrders, searchParams.all_orders]);
+  }, [rawPinnedOrders, searchParams.all_orders, user?.role]);
 
   const pagination = data?.pagination;
 
@@ -599,7 +605,10 @@ const OrdersPage = () => {
     <AdminOrderDetailView
       order={order}
       canEdit={canEdit}
-      isReadOnlyProcessingState={searchParams.all_orders === "1"}
+      isReadOnlyProcessingState={
+        user?.role === UserRole.PICKUP_COORDINATOR &&
+        searchParams.all_orders === "1"
+      }
       teamMembersViaRole={teamMembersViaRole}
       isAssigningToStitchingAgent={isAssigningToStitchingAgent}
       isUpdatingPin={isUpdatingPin}

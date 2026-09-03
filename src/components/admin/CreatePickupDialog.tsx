@@ -15,6 +15,7 @@ import {
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 
 import { CreatePickupPayload } from '@/types/interface';
@@ -88,8 +89,8 @@ export function CreatePickupDialog({prefill}: {prefill?: Prefill}) {
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger className="btn-primary p-2 text-center">
-                Create Pickup
+            <DialogTrigger asChild>
+                <Button type="button">Create Pickup</Button>
             </DialogTrigger>
 
             <DialogContent className="max-h-[90vh] overflow-y-auto flex flex-col pickupDialogScrollbar p-0">
@@ -162,14 +163,13 @@ export function CreatePickupDialog({prefill}: {prefill?: Prefill}) {
                 </div>
 
                 <DialogFooter className="px-6 pb-6">
-                    <button
+                    <Button
                         type="button"
                         onClick={handleSubmit}
                         disabled={mutation.isPending}
-                        className="btn-primary w-full sm:w-auto"
                     >
                         {mutation.isPending ? 'Creating...' : 'Create Pickup'}
-                    </button>
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
