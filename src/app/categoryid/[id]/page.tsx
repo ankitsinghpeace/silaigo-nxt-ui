@@ -1,16 +1,27 @@
-// src/app/categoryid/[id]/page.tsx
-"use client";
-
-import { use } from "react";
+import type { Metadata } from "next";
 import CategoryById from "@/page_components/CategoryById";
 
-export const dynamic = 'force-dynamic';
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  return {
+    title: "Custom Tailoring Category",
+    description:
+      "Explore tailoring details and subcategories at Silaigo.",
+    alternates: {
+      canonical: `/categoryid/${id}`,
+    },
+  };
+}
 
-export default function Page({
+export default async function Page({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = use(params);
+  const { id } = await params;
   return <CategoryById />;
 }

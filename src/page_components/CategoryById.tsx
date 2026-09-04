@@ -44,14 +44,6 @@ const CategoryById = () => {
     fetchData();
   }, [id, toast]);
 
-  if (isLoading || !categoryItem) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <p className="text-primary font-medium">Loading category...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Hero Section */}

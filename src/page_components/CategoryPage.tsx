@@ -1,3 +1,4 @@
+"use client";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -11,6 +12,7 @@ import RibbonLabel from "@/components/RibbonLabel";
 import { getSeoContent } from "@/lib/getSeoContent";
 import { Phone } from "lucide-react";
 import { useRouter } from "@/lib/next-router-compat";
+
 type CategoryPageProps = {
   id: string;
 };
@@ -71,34 +73,17 @@ const CategoryPage = ({ id }: CategoryPageProps) => {
     );
   };
 
-  const handleRedeemOffer = (code: string) => {
-    navigator.clipboard.writeText(code);
-    toast({
-      title: "Code copied!",
-      description: `Offer code ${code} copied to clipboard`,
-    });
-  };
-
-  if (isLoading || !selectedCategory) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-primary font-medium">Loading collection...</p>
-        </div>
-      </div>
-    );
-  }
+  const categoryName = selectedCategory?.name || "Tailoring";
 
   return (
     <div className="min-h-screen bg-slate-50 pb-10">
       <h1 style={{ display: "none" }}>
-        {getSeoContent(selectedCategory.name).h1}
+        {getSeoContent(categoryName).h1}
       </h1>
       <MetaTagsProvider
-        title={getSeoContent(selectedCategory.name).title}
-        description={getSeoContent(selectedCategory.name).description}
-        image={selectedCategory.imageUrl || selectedCategory.image}
+        title={getSeoContent(categoryName).title}
+        description={getSeoContent(categoryName).description}
+        image={selectedCategory?.imageUrl || selectedCategory?.image}
         keywords={getFilteredStyles()
           .map((style: any) => style.name)
           .join(", ")}
@@ -125,13 +110,19 @@ const CategoryPage = ({ id }: CategoryPageProps) => {
           transition={{ duration: 0.6 }}
           className="text-lg sm:text-3xl md:text-4xl font-bold text-center mb-10"
         >
-          {selectedCategory.name} Collection
+          {categoryName} Collection
         </motion.h3>
 
         <div className="grid gap-8 md:grid-cols-2">
-          {getFilteredStyles()
-            .sort((a: any, b: any) => a.rank - b.rank)
-            .map((style: any, index: number) => (
+          {isLoading || !selectedCategory ? (
+            <div className="col-span-full py-16 text-center">
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-primary font-medium">Loading collection...</p>
+            </div>
+          ) : (
+            getFilteredStyles()
+              .sort((a: any, b: any) => a.rank - b.rank)
+              .map((style: any, index: number) => (
               <React.Fragment key={`${style.name}-${index}`}>
                 <motion.div
                   initial={{ opacity: 0, y: 50 }}
@@ -223,7 +214,8 @@ const CategoryPage = ({ id }: CategoryPageProps) => {
                   </div>
                 </motion.div>
               </React.Fragment>
-            ))}
+            ))
+          )}
         </div>
       </div>
     </div>
