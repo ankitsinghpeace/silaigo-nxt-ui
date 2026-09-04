@@ -1,3 +1,4 @@
+"use client";
 import { MetaTagsProvider } from "@/components/MetaTagsProvider";
 import React from "react";
 

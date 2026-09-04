@@ -26,6 +26,57 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 
+function parsePickupDateAndMinutes(pickup: any): { dateTimestamp: number; timeMinutes: number } {
+  if (!pickup) return { dateTimestamp: 0, timeMinutes: 0 };
+
+  const rawDate = pickup.scheduledPickupDate;
+  let datePart = "";
+  if (typeof rawDate === "string") {
+    datePart = rawDate.split("T")[0];
+  } else if (rawDate instanceof Date) {
+    datePart = rawDate.toISOString().split("T")[0];
+  }
+
+  let dateTimestamp = 0;
+  if (datePart) {
+    const d = new Date(`${datePart}T00:00:00`);
+    if (!isNaN(d.getTime())) {
+      dateTimestamp = d.getTime();
+    }
+  } else if (pickup.createdAt) {
+    const d = new Date(pickup.createdAt);
+    if (!isNaN(d.getTime())) {
+      dateTimestamp = new Date(d.toISOString().split("T")[0] + "T00:00:00").getTime();
+    }
+  }
+
+  let timePart = pickup.scheduledPickupTime || "00:00";
+  if (typeof timePart === "string" && timePart.includes("-")) {
+    timePart = timePart.split("-")[0].trim();
+  }
+
+  let hours = 0;
+  let minutes = 0;
+
+  if (typeof timePart === "string") {
+    const isPM = /pm/i.test(timePart);
+    const isAM = /am/i.test(timePart);
+    const cleanTime = timePart.replace(/[^0-9:]/g, "");
+    const parts = cleanTime.split(":");
+    if (parts.length >= 1) {
+      hours = parseInt(parts[0], 10) || 0;
+      if (isPM && hours < 12) hours += 12;
+      if (isAM && hours === 12) hours = 0;
+    }
+    if (parts.length >= 2) {
+      minutes = parseInt(parts[1], 10) || 0;
+    }
+  }
+
+  const timeMinutes = hours * 60 + minutes;
+  return { dateTimestamp, timeMinutes };
+}
+
 export default function PickupsPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -70,10 +121,10 @@ export default function PickupsPage() {
         localCreatedIds = JSON.parse(
           localStorage.getItem("createdOrderPickupIds") || "[]",
         );
-      } catch (e) {}
+      } catch (e) { }
     }
 
-    return pickups.filter((pickup: any) => {
+    const filtered = pickups.filter((pickup: any) => {
       if (localCreatedIds.includes(pickup._id)) {
         return false;
       }
@@ -102,6 +153,19 @@ export default function PickupsPage() {
       }
 
       return true;
+    });
+
+    return filtered.sort((a: any, b: any) => {
+      const pA = parsePickupDateAndMinutes(a);
+      const pB = parsePickupDateAndMinutes(b);
+
+      // 1. Date DESCENDING (latest date first)
+      if (pA.dateTimestamp !== pB.dateTimestamp) {
+        return pB.dateTimestamp - pA.dateTimestamp;
+      }
+
+      // 2. Time ASCENDING (earliest time first for the same date)
+      return pA.timeMinutes - pB.timeMinutes;
     });
   }, [pickups]);
 

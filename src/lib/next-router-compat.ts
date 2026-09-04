@@ -62,7 +62,6 @@ export type CompatRouter = {
 export function useRouter(): CompatRouter {
   const nextRouter = useAppRouter();
   const params = useParams() as Record<string, string | string[]> | null;
-  const searchParams = useSearchParams();
   const pathname = usePathname() ?? "/";
 
   return useMemo(() => {
@@ -72,14 +71,17 @@ export function useRouter(): CompatRouter {
         query[k] = Array.isArray(v) ? v[0] ?? "" : (v as string);
       }
     }
-    if (searchParams) {
-      searchParams.forEach((value, key) => {
-        query[key] = value;
-      });
+    if (typeof window !== "undefined") {
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        searchParams.forEach((value, key) => {
+          query[key] = value;
+        });
+      } catch (e) {}
     }
 
-    const search = searchParams?.toString() ?? "";
-    const asPath = search ? `${pathname}?${search}` : pathname;
+    const search = typeof window !== "undefined" ? window.location.search : "";
+    const asPath = search ? `${pathname}${search}` : pathname;
 
     const callable = ((url: Url) => nextRouter.push(toHref(url))) as CompatRouter;
 
@@ -107,7 +109,7 @@ export function useRouter(): CompatRouter {
     };
 
     return callable;
-  }, [nextRouter, params, searchParams, pathname]);
+  }, [nextRouter, params, pathname]);
 }
 
 export default useRouter;

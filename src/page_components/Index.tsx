@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from "react";
 import HeroCarousel from "@/components/HeroCarousel";
 import JourneySection from "@/components/JourneySection";

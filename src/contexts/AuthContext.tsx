@@ -66,10 +66,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const { toast } = useToast();
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams: any = useSearchParams();
-
-  const redirect = searchParams.get("redirect");
+  const redirect =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("redirect")
+      : null;
 
   const updateUserState = useCallback((userData: User | null) => {
     setUser(userData);

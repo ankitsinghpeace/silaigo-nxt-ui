@@ -27,15 +27,13 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Suspense fallback={null}>
-          <AuthProvider>
-            <OrderFlowProvider>
-              <Layout>{children}</Layout>
-            </OrderFlowProvider>
-            <Toaster />
-            <Sonner />
-          </AuthProvider>
-        </Suspense>
+        <AuthProvider>
+          <OrderFlowProvider>
+            <Layout>{children}</Layout>
+          </OrderFlowProvider>
+          <Toaster />
+          <Sonner />
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
