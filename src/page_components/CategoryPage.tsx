@@ -15,12 +15,13 @@ import { useRouter } from "@/lib/next-router-compat";
 
 type CategoryPageProps = {
   id: string;
+  initialCategoryData?: any;
 };
 
-const CategoryPage = ({ id }: CategoryPageProps) => {
+const CategoryPage = ({ id, initialCategoryData = null }: CategoryPageProps) => {
   const router = useRouter();
-  const [selectedCategory, setSelectedCategory] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<any>(initialCategoryData);
+  const [isLoading, setIsLoading] = useState(!initialCategoryData);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [metadata, setMetadata] = useState<any>(null);
   const [showOfferModal, setShowOfferModal] = useState(false);

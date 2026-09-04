@@ -125,3 +125,57 @@ export async function getRoutes() {
     throw error;
   }
 }
+
+/**
+ * Fetch all categories for server-side rendering.
+ */
+export async function getServerCategories() {
+  const url = `${getApiUrl()}/category`;
+  try {
+    const res = await fetch(url, {
+      next: {
+        revalidate: 60,
+      },
+    });
+
+    if (!res.ok) {
+      console.error("Categories API error:", res.status, res.statusText, url);
+      return [];
+    }
+
+    const json = await res.json();
+    const data = json?.data;
+    if (Array.isArray(data)) {
+      return data.sort((a: any, b: any) => a.rank - b.rank);
+    }
+    return [];
+  } catch (error) {
+    console.error("Categories API request failed:", { url, error });
+    return [];
+  }
+}
+
+/**
+ * Fetch subcategory and styles data for a category ID for server-side rendering.
+ */
+export async function getServerCategoryById(id: string | number) {
+  const url = `${getApiUrl()}/category/id/${id}`;
+  try {
+    const res = await fetch(url, {
+      next: {
+        revalidate: 60,
+      },
+    });
+
+    if (!res.ok) {
+      console.error("Category details API error:", res.status, res.statusText, url);
+      return null;
+    }
+
+    const json = await res.json();
+    return json?.data ?? null;
+  } catch (error) {
+    console.error("Category details API request failed:", { url, id, error });
+    return null;
+  }
+}

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import TailoringPage from "@/page_components/TailoringPage";
+import { getServerCategories } from "@/lib/api";
 
 export const metadata: Metadata = {
   title: "Doorstep Tailoring Services",
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() {
-  return <TailoringPage />;
+export default async function Page() {
+  const initialCategories = await getServerCategories();
+  return <TailoringPage initialCategories={initialCategories} />;
 }

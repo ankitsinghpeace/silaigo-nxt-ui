@@ -15,9 +15,15 @@ import { fetchAllCategories } from "@/services";
 import { MetaTagsProvider } from "@/components/MetaTagsProvider";
 import RibbonLabel from "@/components/RibbonLabel";
 
-const TailoringPage = () => {
-  const [categories, setCategoriesData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+const TailoringPage = ({
+  initialCategories = [],
+}: {
+  initialCategories?: any[];
+}) => {
+  const [categories, setCategoriesData] = useState<any>(
+    initialCategories.length > 0 ? initialCategories : null,
+  );
+  const [isLoading, setIsLoading] = useState(initialCategories.length === 0);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [showSpinnerModal, setShowSpinnerModal] = useState(false);
