@@ -13,6 +13,8 @@ import { getSeoContent } from "@/lib/getSeoContent";
 import { Phone } from "lucide-react";
 import { useRouter } from "@/lib/next-router-compat";
 
+import { resolveCategoryId, getCategorySlug } from "@/lib/category-helpers";
+
 type CategoryPageProps = {
   id: string;
   initialCategoryData?: any;
@@ -31,7 +33,7 @@ const CategoryPage = ({ id, initialCategoryData = null }: CategoryPageProps) => 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const categoryId = Number(id);
+        const categoryId = resolveCategoryId(id);
         setIsLoading(true);
         const subCategoriesData = await fetchSubCategoryData(categoryId);
         const metadata = await fetchAllMetaMaster();
@@ -75,6 +77,7 @@ const CategoryPage = ({ id, initialCategoryData = null }: CategoryPageProps) => 
   };
 
   const categoryName = selectedCategory?.name || "Tailoring";
+  const slug = getCategorySlug(selectedCategory || id);
 
   return (
     <div className="min-h-screen bg-slate-50 pb-10">
@@ -88,8 +91,9 @@ const CategoryPage = ({ id, initialCategoryData = null }: CategoryPageProps) => 
         keywords={getFilteredStyles()
           .map((style: any) => style.name)
           .join(", ")}
-        canonicalPath={`/category/${id}`}
+        canonicalPath={`/category/${slug}`}
       />
+
 
       <ReferralModal
         isOpen={showReferralModal}

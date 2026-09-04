@@ -30,8 +30,41 @@ const nextConfig: NextConfig = {
         source: "/api/:path*",
         destination: "https://api.silaigo.com/:path*",
       },
+      {
+        source: "/kurti",
+        destination: "/category/kurti",
+      },
+      {
+        source: "/blouse",
+        destination: "/category/blouse",
+      },
+      {
+        source: "/suits",
+        destination: "/category/suits",
+      },
+      {
+        source: "/sharara-sets",
+        destination: "/category/sharara-sets",
+      },
+      {
+        source: "/co-ords-sets",
+        destination: "/category/co-ords-sets",
+      },
+      {
+        source: "/dresses",
+        destination: "/category/dresses",
+      },
+      {
+        source: "/ready-to-wear-sarees",
+        destination: "/category/ready-to-wear-sarees",
+      },
+      {
+        source: "/lehengas",
+        destination: "/category/lehengas",
+      },
     ];
   },
 };
+
 
 export default nextConfig;

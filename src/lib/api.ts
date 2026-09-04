@@ -155,11 +155,14 @@ export async function getServerCategories() {
   }
 }
 
+import { resolveCategoryId } from "@/lib/category-helpers";
+
 /**
- * Fetch subcategory and styles data for a category ID for server-side rendering.
+ * Fetch subcategory and styles data for a category ID or slug for server-side rendering.
  */
 export async function getServerCategoryById(id: string | number) {
-  const url = `${getApiUrl()}/category/id/${id}`;
+  const numericId = resolveCategoryId(id);
+  const url = `${getApiUrl()}/category/id/${numericId}`;
   try {
     const res = await fetch(url, {
       next: {
@@ -179,6 +182,7 @@ export async function getServerCategoryById(id: string | number) {
     return null;
   }
 }
+
 
 /**
  * Fetch blogs list for server-side rendering.

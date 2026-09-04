@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import CategoryPage from "@/page_components/CategoryPage";
 import { getServerCategoryById } from "@/lib/api";
+import { getCategorySlug } from "@/lib/category-helpers";
 
 export async function generateMetadata({
   params,
@@ -9,6 +10,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const categoryData = await getServerCategoryById(id);
+  const slug = getCategorySlug(categoryData || id);
   const titleName = categoryData?.name || "Custom Tailoring";
   const desc =
     categoryData?.description ||
@@ -18,12 +20,12 @@ export async function generateMetadata({
     title: `${titleName} Collection`,
     description: desc,
     alternates: {
-      canonical: `/category/${id}`,
+      canonical: `/category/${slug}`,
     },
     openGraph: {
       title: `${titleName} Collection | Silaigo`,
       description: desc,
-      url: `https://www.silaigo.com/category/${id}`,
+      url: `https://www.silaigo.com/category/${slug}`,
     },
   };
 }
@@ -37,3 +39,4 @@ export default async function Page({
   const initialCategoryData = await getServerCategoryById(id);
   return <CategoryPage id={id} initialCategoryData={initialCategoryData} />;
 }
+

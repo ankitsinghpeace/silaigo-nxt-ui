@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { fetchAllCategories } from "@/services";
 import { MetaTagsProvider } from "@/components/MetaTagsProvider";
 import RibbonLabel from "@/components/RibbonLabel";
+import { getCategorySlug } from "@/lib/category-helpers";
+
 
 const TailoringPage = ({
   initialCategories = [],
@@ -169,7 +171,7 @@ const TailoringPage = ({
                     viewport={{ once: true, amount: 0.1 }}
                     className="group"
                   >
-                    <Link href={`/category/${category.id}`}>
+                    <Link href={`/category/${getCategorySlug(category)}`}>
                       <Card className="overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 h-full flex-col">
                         <div className="relative h-64 overflow-hidden ">
                           {category.label && (

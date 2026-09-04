@@ -7,7 +7,10 @@ import ImagePreviewModal from "@/components/admin/ImagePreviewModal";
 import { fetchAllCategories } from "@/services";
 import RibbonLabel from "./RibbonLabel";
 
+import { getCategorySlug } from "@/lib/category-helpers";
+
 interface CategorySectionProps {
+
   onReady?: (categories: Category[]) => void;
 }
 
@@ -52,7 +55,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({ onReady }) => {
               .sort((a, b) => a.rank - b.rank)
               .map((category, index) => (
                 <Link
-                  href={`/category/${category.id}`}
+                  href={`/category/${getCategorySlug(category)}`}
                   key={category.id}
                   className="group flex flex-col items-center w-full"
                   style={{
@@ -121,7 +124,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({ onReady }) => {
                 .sort((a, b) => a.rank - b.rank)
                 .map((category, index) => (
                   <Link
-                    href={`/category/${category.id}`}
+                    href={`/category/${getCategorySlug(category)}`}
                     key={category.id}
                     className="group flex-shrink-0 flex flex-col items-center snap-center"
                     style={{
