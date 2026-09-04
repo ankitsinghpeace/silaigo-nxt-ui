@@ -34,32 +34,17 @@ const MenPage = () => {
         </div>
 
         <div className="container mx-auto px-6 pt-28 md:pt-40 text-center">
-          <motion.h1
-            className="text-4xl md:text-5xl font-serif text-gray-900 mb-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-          >
+          <h1 className="text-4xl md:text-5xl font-serif text-gray-900 mb-4">
             Coming Soon
-          </motion.h1>
+          </h1>
 
-          <motion.p
-            className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
+          <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
             While our collection for men is being tailored to perfection, why
             not surprise someone special — your sister, mother, or partner —
             with a thoughtful custom piece?
-          </motion.p>
+          </p>
 
-          <motion.div
-            className="mt-8 flex justify-center gap-4 flex-wrap"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-          >
+          <div className="mt-8 flex justify-center gap-4 flex-wrap">
             <Button asChild className="rounded-full px-6 py-3 text-base">
               <Link href="/tailoring">
                 Gift a Custom Stitch
@@ -73,31 +58,20 @@ const MenPage = () => {
             >
               <Link href="/#categories">Explore Other Collections</Link>
             </Button>
-          </motion.div>
+          </div>
         </div>
       </section>
 
       {/* Gift Suggestions Section */}
       <section className="py-20 bg-white">
         <div className="container mx-auto px-6 text-center">
-          <motion.h2
-            className="text-2xl md:text-3xl font-serif font-medium mb-6"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
+          <h2 className="text-2xl md:text-3xl font-serif font-medium mb-6">
             A Gift Worth Wearing
-          </motion.h2>
-          <motion.p
-            className="text-gray-600 mb-12 max-w-2xl mx-auto text-base md:text-lg"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
+          </h2>
+          <p className="text-gray-600 mb-12 max-w-2xl mx-auto text-base md:text-lg">
             Make your loved ones feel truly special — with a handcrafted outfit,
             tailored just for them.
-          </motion.p>
+          </p>
 
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {[
@@ -117,17 +91,16 @@ const MenPage = () => {
                 desc: "Because there’s no better fit than one made just for them.",
               },
             ].map((feature, idx) => (
-              <motion.div
+              <div
                 key={idx}
-                whileHover={{ y: -6 }}
-                className="p-6 bg-gray-50 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
+                className="p-6 bg-gray-50 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1"
               >
                 <div className="mb-4 w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto">
                   {feature.icon}
                 </div>
                 <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
                 <p className="text-gray-600 text-sm">{feature.desc}</p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
@@ -135,5 +108,6 @@ const MenPage = () => {
     </div>
   );
 };
+
 
 export default MenPage;

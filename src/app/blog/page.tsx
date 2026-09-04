@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import BlogPage from "@/page_components/BlogPage";
+import { getServerBlogs } from "@/lib/api";
 
 export const metadata: Metadata = {
   title: "Tailoring & Fashion Blog",
@@ -16,6 +17,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() {
-  return <BlogPage />;
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string>>;
+}) {
+  const params = await searchParams;
+  const initialData = await getServerBlogs(params);
+
+  return <BlogPage initialData={initialData} />;
 }

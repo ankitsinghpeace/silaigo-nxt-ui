@@ -179,3 +179,30 @@ export async function getServerCategoryById(id: string | number) {
     return null;
   }
 }
+
+/**
+ * Fetch blogs list for server-side rendering.
+ */
+export async function getServerBlogs(searchParams?: Record<string, string>) {
+  const query = searchParams ? new URLSearchParams(searchParams).toString() : "";
+  const url = `${getApiUrl()}/blogs?${query}`;
+  try {
+    const res = await fetch(url, {
+      next: {
+        revalidate: 60,
+      },
+    });
+
+    if (!res.ok) {
+      console.error("Blogs API error:", res.status, res.statusText, url);
+      return { blogs: [], totalPages: 1, totalBlogs: 0 };
+    }
+
+    const json = await res.json();
+    return json?.data ?? { blogs: [], totalPages: 1, totalBlogs: 0 };
+  } catch (error) {
+    console.error("Blogs API request failed:", { url, error });
+    return { blogs: [], totalPages: 1, totalBlogs: 0 };
+  }
+}
+

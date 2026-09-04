@@ -63,7 +63,11 @@ export const getCategoryIcon = (id: string) => {
   return category ? category.icon : <Tag className="h-4 w-4" />;
 };
 
-const BlogPage = () => {
+interface BlogPageProps {
+  initialData?: BlogListResponse;
+}
+
+const BlogPage = ({ initialData }: BlogPageProps) => {
   const router = useRouter();
   const searchParams = router.query;
   const setSearchParams = (params: Record<string, string>) => {
@@ -89,6 +93,7 @@ const BlogPage = () => {
       queryFn: async () => {
         return await getBlogs(searchParams);
       },
+      initialData: initialData,
       staleTime: 1000 * 60 * 5,
       gcTime: 1000 * 60 * 5,
       refetchOnWindowFocus: false,
@@ -124,8 +129,9 @@ const BlogPage = () => {
     setSearchParams({ page: String(newPage) });
   };
 
-  const blogs = data?.blogs || [];
-  const pagination = data?.pagination;
+  const blogs = data?.blogs || initialData?.blogs || [];
+  const pagination = data?.pagination || initialData?.pagination;
+  const showLoading = isLoading && !data && !initialData;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -138,10 +144,10 @@ const BlogPage = () => {
       <section className="bg-primary/5 py-16">
         <div className="container mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-serif text-center font-medium text-gray-900 mb-4">
-            Silai Go Blog
+            Tailoring & Fashion Blog
           </h1>
-          <p className="text-lg text-center max-w-2xl mx-auto text-gray-600 mb-8">
-            Discover expert tailoring insights, fabric explorations, and style
+          <p className="text-gray-600 text-center max-w-2xl mx-auto mb-8">
+            Discover expert insights, fabric explorations, and style
             inspirations to elevate your fashion journey.
           </p>
 
@@ -187,7 +193,7 @@ const BlogPage = () => {
         </div>
       </section>
 
-      {isLoading ? (
+      {showLoading ? (
         <div className="flex justify-center items-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
