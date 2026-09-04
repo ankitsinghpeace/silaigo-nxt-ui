@@ -57,16 +57,6 @@ const TailoringPage = () => {
     fetchData();
   }, [toast]);
 
-  if (isLoading || !categories) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-primary font-medium">Loading collections...</p>
-        </div>
-      </div>
-    );
-  }
   // Split categories into chunks of 4 for grid layout
   const chunkCategories = (arr: Category[], size: number) => {
     return Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
@@ -74,7 +64,7 @@ const TailoringPage = () => {
     );
   };
 
-  const categoriesInRows = chunkCategories(categories, 4);
+  const categoriesInRows = categories ? chunkCategories(categories, 4) : [];
 
   const fadeInUpVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -153,7 +143,13 @@ const TailoringPage = () => {
         </div>
 
         <div className=" space-y-8 sm:space-y-16">
-          {categoriesInRows.map((row, rowIndex) => (
+          {isLoading || !categories ? (
+            <div className="py-12 text-center">
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-primary font-medium">Loading collections...</p>
+            </div>
+          ) : (
+            categoriesInRows.map((row, rowIndex) => (
             <React.Fragment key={`row-${rowIndex}`}>
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {row.map((category: any, index) => (
@@ -276,7 +272,8 @@ const TailoringPage = () => {
                 </motion.div>
               )} */}
             </React.Fragment>
-          ))}
+          ))
+        )}
         </div>
       </div>
 

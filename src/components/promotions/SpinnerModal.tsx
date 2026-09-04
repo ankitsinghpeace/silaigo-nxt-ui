@@ -40,6 +40,7 @@ const SpinnerModal: React.FC<SpinnerModalProps> = ({ isOpen, onClose }) => {
   const [internalDeg, setInternalDeg] = useState(0);
 
   const canSpin = () => {
+    if (typeof window === "undefined") return true;
     const lastSpinDate = localStorage.getItem("lastSpinDate");
     if (!lastSpinDate) return true;
     const lastDate = new Date(lastSpinDate);
