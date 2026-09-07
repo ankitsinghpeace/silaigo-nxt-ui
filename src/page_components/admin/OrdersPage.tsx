@@ -72,7 +72,7 @@ import {
   DialogOverlay,
   DialogPortal,
 } from "@radix-ui/react-dialog";
-import { deleteOrder, getTeamMembers, getTeamMembersViaRole, UserRole } from "@/services";
+import { deleteOrder, getRoles, getTeamMembers, getTeamMembersViaRole, UserRole } from "@/services";
 import OrderTimelineView from "@/components/OrderTImeLineView";
 import { json2csv } from "json-2-csv";
 import Swal from "sweetalert2";
@@ -149,6 +149,17 @@ export const ORDER_TIMELINE_OPTIONS = [
   {
     value: OrderProcessingState.ORDER_COMPLETE,
     label: "Order Completed",
+  },
+];
+
+export const PICKUP_COORDINATOR_TIMELINE_OPTIONS = [
+  {
+    value: OrderProcessingState.ORDER_PLACED,
+    label: "Order Placed",
+  },
+  {
+    value: OrderProcessingState.ORDER_FULFILLED,
+    label: "Order Fulfilled",
   },
 ];
 
@@ -349,6 +360,9 @@ const OrdersPage = () => {
       }
     }
   }, [user]);
+
+  const isCuttingOrStitching =
+    user?.role === UserRole.CUTTING || user?.role === UserRole.STITCHING;
 
   const { toast } = useToast();
   const canView =
@@ -596,6 +610,8 @@ const OrdersPage = () => {
   const selectedOrder = useMemo(() => {
     if (!selectedOrderId) return null;
     const found =
+      (rawOrders || []).find((o: any) => o.id === selectedOrderId || o._id === selectedOrderId) ||
+      (rawPinnedOrders || []).find((o: any) => o.id === selectedOrderId || o._id === selectedOrderId) ||
       (orders || []).find((o: any) => o.id === selectedOrderId || o._id === selectedOrderId) ||
       (pinnedOrders || []).find((o: any) => o.id === selectedOrderId || o._id === selectedOrderId);
     if (found) return found;
@@ -604,7 +620,7 @@ const OrdersPage = () => {
       _id: selectedOrderId,
       orderId: selectedOrderId,
     };
-  }, [selectedOrderId, orders, pinnedOrders]);
+  }, [selectedOrderId, rawOrders, rawPinnedOrders, orders, pinnedOrders]);
 
   const renderOrderDetail = (order: any) => (
     <AdminOrderDetailView
@@ -615,6 +631,7 @@ const OrdersPage = () => {
         searchParams.all_orders === "1"
       }
       teamMembersViaRole={teamMembersViaRole}
+      cuttingAgents={cuttingAgents}
       isAssigningToStitchingAgent={isAssigningToStitchingAgent}
       isUpdatingPin={isUpdatingPin}
       isDuplicating={isCopyingOrder}
@@ -1072,7 +1089,7 @@ const OrdersPage = () => {
       },
       retry: 2,
       retryDelay: 1000,
-      staleTime: 1000 * 60 * 5,
+      staleTime: 0,
       gcTime: 1000 * 60 * 5,
     },
   );
@@ -1081,32 +1098,66 @@ const OrdersPage = () => {
   const { data: cuttingAgents = [] } = useQuery({
     queryKey: ["cuttingAgents"],
     queryFn: async () => {
-      // 1. Try role-specific endpoint
+      const allFetched: any[] = [];
+
       try {
         const res = await getTeamMembersViaRole(UserRole.CUTTING);
-        const list = Array.isArray(res) ? res : res?.data || [];
-        if (Array.isArray(list) && list.length > 0) {
-          return list;
-        }
+        const list = Array.isArray(res) ? res : res?.data || res?.users || res?.members || [];
+        if (Array.isArray(list)) allFetched.push(...list);
       } catch (e) {}
 
-      // 2. Fallback to all team members endpoint
       try {
-        const allMembers = await getTeamMembers();
-        const list = Array.isArray(allMembers) ? allMembers : allMembers?.data || [];
-        if (Array.isArray(list)) {
-          return list.filter((m: any) => {
-            const roleVal = typeof m.role === "string" ? m.role : m.role?.code || m.role?.name || m.role?.roleName || "";
-            return String(roleVal).toUpperCase().includes("CUT");
-          });
-        }
+        const [allMembersRes, rolesRes] = await Promise.allSettled([
+          getTeamMembers(),
+          getRoles(),
+        ]);
+
+        const allMembers =
+          allMembersRes.status === "fulfilled"
+            ? Array.isArray(allMembersRes.value)
+              ? allMembersRes.value
+              : allMembersRes.value?.data || allMembersRes.value?.users || allMembersRes.value?.teamMembers || []
+            : [];
+
+        if (Array.isArray(allMembers)) allFetched.push(...allMembers);
       } catch (e) {}
 
-      return [];
+      const map = new Map<string, any>();
+      for (const m of allFetched) {
+        if (!m) continue;
+        const key = String(m._id || m.userId || m.id || m.email || "").toLowerCase();
+        if (key && !map.has(key)) {
+          map.set(key, m);
+        }
+      }
+
+      const merged = Array.from(map.values());
+      if (merged.length === 0) return [];
+
+      const filtered = merged.filter((m: any) => {
+        const roleVal = String(
+          typeof m.role === "string"
+            ? m.role
+            : m.role?.title || m.role?.name || m.role?.code || "",
+        ).toUpperCase();
+        const desigVal = String(m.designation || "").toUpperCase();
+        const nameVal = `${m.firstName || ""} ${m.lastName || ""}`.toUpperCase();
+
+        return (
+          roleVal.includes("CUT") ||
+          desigVal.includes("CUT") ||
+          roleVal.includes("MASTER") ||
+          desigVal.includes("MASTER") ||
+          nameVal.includes("HAFEEZ") ||
+          (!roleVal.includes("ADMIN") && !roleVal.includes("CUSTOMER"))
+        );
+      });
+
+      return filtered.length > 0 ? filtered : merged;
     },
     retry: 2,
     retryDelay: 1000,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
     gcTime: 1000 * 60 * 5,
   });
 
@@ -1123,12 +1174,16 @@ const OrdersPage = () => {
       orderId: string;
       agentId: string;
     }) => {
-      if (!canEdit) {
+      if (!canEdit && user?.role !== UserRole.CUTTING && user?.role !== UserRole.ADMIN) {
         return Promise.reject(new Error("You don't have permission to update"));
       }
       return assignStitchingAgent(orderId, { agentId });
     },
     onSuccess: (res, { orderId, agentId }) => {
+      const agentObj = (teamMembersViaRole || []).find(
+        (a: any) => (a._id || a.userId || a.id) === agentId,
+      );
+
       queryClient.setQueryData(
         ["orders", queryString],
         (oldData: any) => {
@@ -1138,7 +1193,16 @@ const OrdersPage = () => {
 
           const updatedData = oldData.orders.map((order: any) => {
             return order.id === orderId
-              ? { ...order, assignedToStitchingAgentId: agentId }
+              ? {
+                  ...order,
+                  assignedToStitchingAgentId: agentId,
+                  assignedStitchingAgentId: agentId,
+                  assignedStitchingAgent: agentObj || {
+                    _id: agentId,
+                    id: agentId,
+                    userId: agentId,
+                  },
+                }
               : order;
           });
 
@@ -1152,7 +1216,7 @@ const OrdersPage = () => {
     },
     onError: (error) => {
       toast({
-        title: "Error updating order rank",
+        title: "Error assigning stitching agent",
         description: generateErrorMessage(error),
         variant: "destructive",
       });
@@ -1740,7 +1804,9 @@ const OrdersPage = () => {
                               <TableHead>Product Name</TableHead>
                               <TableHead>Delivery Date</TableHead>
                               <TableHead>Order Date</TableHead>
-                              <TableHead>Custom Price</TableHead>
+                              {!isCuttingOrStitching && (
+                                <TableHead>Custom Price</TableHead>
+                              )}
                               <TableHead>Action</TableHead>
                               {user.role != UserRole.ADMIN && (
                                 <TableHead>Order TimeLine</TableHead>
@@ -1791,7 +1857,8 @@ const OrdersPage = () => {
                                       "_",
                                       " ",
                                     )}
-                                    {user.role === UserRole.ADMIN && (
+                                    {(user.role === UserRole.ADMIN ||
+                                      user.role === UserRole.PICKUP_COORDINATOR) && (
                                       <Select
                                         value={order.orderProcessingState}
                                         onValueChange={(val) =>
@@ -1808,17 +1875,18 @@ const OrdersPage = () => {
                                           <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent className="w-max">
-                                          {ORDER_TIMELINE_OPTIONS.map(
-                                            (opt, i) => (
-                                              <SelectItem
-                                                key={i}
-                                                value={opt.value}
-                                                className="cursor-pointer w-max"
-                                              >
-                                                {opt.label}
-                                              </SelectItem>
-                                            ),
-                                          )}
+                                          {(user.role === UserRole.ADMIN
+                                            ? ORDER_TIMELINE_OPTIONS
+                                            : PICKUP_COORDINATOR_TIMELINE_OPTIONS
+                                          ).map((opt, i) => (
+                                            <SelectItem
+                                              key={i}
+                                              value={opt.value}
+                                              className="cursor-pointer w-max"
+                                            >
+                                              {opt.label}
+                                            </SelectItem>
+                                          ))}
                                         </SelectContent>
                                       </Select>
                                     )}
@@ -1867,12 +1935,14 @@ const OrdersPage = () => {
                                     )}
                                   </TableCell>
 
-                                  <TableCell className="align-top">
-                                    Rs.{" "}
-                                    {order.customPrice
-                                      ? order.customPrice
-                                      : order.productPrice}
-                                  </TableCell>
+                                  {!isCuttingOrStitching && (
+                                    <TableCell className="align-top">
+                                      Rs.{" "}
+                                      {order.customPrice
+                                        ? order.customPrice
+                                        : order.productPrice}
+                                    </TableCell>
+                                  )}
 
                                   <TableCell className="flex gap-2 align-top">
                                     {user.role === UserRole.ADMIN && (
@@ -2546,6 +2616,7 @@ const OrdersPage = () => {
                   role={user.role === UserRole.STITCHING ? "STITCHING" : "CUTTING"}
                   onOpenOrder={openOrderModal}
                   canEdit={canEdit}
+                  cuttingAgents={cuttingAgents}
                 />
               </TabsContent>
             )}

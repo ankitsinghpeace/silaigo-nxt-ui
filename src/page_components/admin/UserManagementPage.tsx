@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getRoles,
   getTeamMembers,
@@ -30,6 +30,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -52,6 +62,13 @@ import { useAuth } from "@/contexts/AuthContext";
 const UserManagementPage = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const invalidateMemberCaches = () => {
+    queryClient.invalidateQueries({ queryKey: ["users"] });
+    queryClient.invalidateQueries({ queryKey: ["cuttingAgents"] });
+    queryClient.invalidateQueries({ queryKey: ["teamMembers"] });
+  };
 
   const canCreate = user?.permissions?.includes(
     `${PermissionType.ROLES}.${PermissionSubType.CREATE}`,
@@ -71,6 +88,7 @@ const UserManagementPage = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [userToDelete, setUserToDelete] = useState<any | null>(null);
 
   const [newUser, setNewUser] = useState({
     firstName: "",
@@ -146,6 +164,7 @@ const UserManagementPage = () => {
         joiningDate: "",
       });
       refetch();
+      invalidateMemberCaches();
     } catch (e) {
       toast({
         title: "Error",
@@ -204,6 +223,7 @@ const UserManagementPage = () => {
       setIsEditDialogOpen(false);
       setEditingUserId(null);
       refetch();
+      invalidateMemberCaches();
     } catch (e) {
       toast({
         title: "Error",
@@ -221,6 +241,7 @@ const UserManagementPage = () => {
       await removeTeamMember(id);
       toast({ title: "Success", description: "User removed" });
       refetch();
+      invalidateMemberCaches();
     } catch (e) {
       toast({
         title: "Error",
@@ -362,7 +383,7 @@ const UserManagementPage = () => {
                           size="icon"
                           variant="ghost"
                           disabled={!canDelete}
-                          onClick={() => handleRemoveTeamMember(u.userId)}
+                          onClick={() => setUserToDelete(u)}
                         >
                           <Trash className="h-4 w-4 text-red-500" />
                         </Button>
@@ -443,6 +464,46 @@ const UserManagementPage = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Popup */}
+        <AlertDialog
+          open={!!userToDelete}
+          onOpenChange={(open) => !open && setUserToDelete(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. Are you sure you want to delete user{" "}
+                <span className="font-semibold text-foreground">
+                  {userToDelete
+                    ? `${userToDelete.firstName || ""} ${userToDelete.lastName || ""}`.trim() ||
+                      userToDelete.email
+                    : ""}
+                </span>
+                ?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => {
+                  if (userToDelete) {
+                    const id =
+                      userToDelete.userId ||
+                      userToDelete._id ||
+                      userToDelete.id;
+                    handleRemoveTeamMember(id);
+                    setUserToDelete(null);
+                  }
+                }}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );

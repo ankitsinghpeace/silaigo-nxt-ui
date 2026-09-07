@@ -39,25 +39,6 @@ interface RoleQueueViewProps {
   cuttingAgents?: any[];
 }
 
-const DEFAULT_CUTTING_AGENTS = [
-  {
-    _id: "hafeez_ahmed",
-    userId: "hafeez_ahmed",
-    firstName: "Hafeez",
-    lastName: "Ahmed",
-    email: "hafeez@silaigo.com",
-    role: "CUTTING",
-  },
-  {
-    _id: "test_cutting",
-    userId: "test_cutting",
-    firstName: "test",
-    lastName: "cutting",
-    email: "testcutting@silaigo.com",
-    role: "CUTTING",
-  },
-];
-
 const RoleQueueView: React.FC<RoleQueueViewProps> = ({
   role,
   onOpenOrder,
@@ -71,10 +52,7 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({
   const completionStage = ROLE_COMPLETION_STAGE[role];
 
   const activeCuttingAgents = useMemo(() => {
-    if (Array.isArray(cuttingAgents) && cuttingAgents.length > 0) {
-      return cuttingAgents;
-    }
-    return DEFAULT_CUTTING_AGENTS;
+    return Array.isArray(cuttingAgents) ? cuttingAgents : [];
   }, [cuttingAgents]);
 
   const [assignedMap, setAssignedMap] = useState<Record<string, CuttingAgentAssignment>>(() =>
@@ -156,7 +134,11 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({
 
   const queueOrders = useMemo(() => {
     const orders = data?.orders || [];
-    let filtered = orders.filter((o: any) => o.orderProcessingState === queueStage);
+    let filtered = orders.filter(
+      (o: any) =>
+        o.orderProcessingState === queueStage ||
+        (role === "CUTTING" && o.orderProcessingState === "CUTTING_START"),
+    );
 
     if (role === "CUTTING" && filterAgentId !== "ALL") {
       filtered = filtered.filter((o: any) => {
@@ -266,6 +248,14 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({
         </div>
       ) : (
         <div className="rounded-lg border divide-y overflow-hidden">
+          <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b">
+            <div className="col-span-12 sm:col-span-4">Order & Customer</div>
+            <div className="col-span-6 sm:col-span-3">Delivery Date</div>
+            <div className="col-span-6 sm:col-span-2">Urgency</div>
+            <div className="col-span-12 sm:col-span-3">
+              {role === "CUTTING" ? "Cutting Agent" : "Stitching Agent"}
+            </div>
+          </div>
           {queueOrders.map((order: any) => {
             const orderId = order.id || order._id;
             const urgency = getDeliveryUrgency(order.appointmentDate);
@@ -274,10 +264,11 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({
             return (
               <div
                 key={orderId}
-                className="grid grid-cols-12 gap-3 items-center px-4 py-3 text-sm hover:bg-muted/40"
+                className="grid grid-cols-12 gap-3 items-center px-4 py-3 text-sm hover:bg-muted/40 cursor-pointer"
+                onClick={() => onOpenOrder(orderId)}
                 data-testid={`queue-order-row-${orderId}`}
               >
-                <div className="col-span-12 sm:col-span-3 min-w-0">
+                <div className="col-span-12 sm:col-span-4 min-w-0">
                   <button
                     type="button"
                     onClick={() => onOpenOrder(orderId)}
@@ -288,7 +279,7 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({
                   <div className="font-medium truncate">{order.customerName}</div>
                 </div>
 
-                <div className="col-span-6 sm:col-span-2 text-xs text-muted-foreground">
+                <div className="col-span-6 sm:col-span-3 text-xs text-muted-foreground">
                   {order.appointmentDate && !isNaN(new Date(order.appointmentDate).getTime())
                     ? format(new Date(order.appointmentDate), "dd MMM yyyy")
                     : "No date"}
@@ -307,7 +298,7 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({
                 </div>
 
                 {role === "CUTTING" && (
-                  <div className="col-span-12 sm:col-span-2">
+                  <div className="col-span-12 sm:col-span-3" onClick={(e) => e.stopPropagation()}>
                     {activeCuttingAgents.length > 0 ? (
                       <Select
                         value={assignment?.agentId || "none"}
@@ -336,28 +327,6 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({
                     )}
                   </div>
                 )}
-
-                <div className={cn(
-                  "flex justify-end gap-2",
-                  role === "CUTTING" ? "col-span-12 sm:col-span-3" : "col-span-12 sm:col-span-5"
-                )}>
-                  <Button size="sm" variant="outline" onClick={() => onOpenOrder(orderId)}>
-                    View
-                  </Button>
-                  <Button
-                    size="sm"
-                    disabled={!canEdit || isAdvancing}
-                    onClick={() => advanceStage(orderId)}
-                    data-testid={`queue-advance-btn-${orderId}`}
-                  >
-                    {isAdvancing && variables === orderId ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
-                    ) : (
-                      <ArrowRight className="w-3.5 h-3.5 mr-1" />
-                    )}
-                    Mark Done
-                  </Button>
-                </div>
               </div>
             );
           })}

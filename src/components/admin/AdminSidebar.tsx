@@ -110,10 +110,25 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed }) => {
       section: ["change-password", "settings"],
     },
   ];
+  const isCuttingOrStitching =
+    user?.role === UserRole.CUTTING ||
+    user?.role === UserRole.STITCHING ||
+    user?.role?.toUpperCase() === "CUTTING" ||
+    user?.role?.toUpperCase() === "STITCHING";
+
   const allowedSections = accessibleSections();
-  const allowedNavItems = navItems.filter((item) =>
-    allowedSections.some((section) => item.section.includes(section)),
-  );
+  const allowedNavItems = navItems.filter((item) => {
+    if (isCuttingOrStitching) {
+      if (
+        item.name === "Content" ||
+        item.name === "Customers" ||
+        item.name === "Coupons"
+      ) {
+        return false;
+      }
+    }
+    return allowedSections.some((section) => item.section.includes(section));
+  });
 
   return (
     <div

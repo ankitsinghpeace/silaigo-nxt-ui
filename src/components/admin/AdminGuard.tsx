@@ -44,11 +44,28 @@ const AdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const allowed = useMemo(() => {
     if (!isAuthenticated || isCustomer) return false;
+
+    const isCuttingOrStitching =
+      user?.role === UserRole.CUTTING ||
+      user?.role === UserRole.STITCHING ||
+      user?.role?.toUpperCase() === "CUTTING" ||
+      user?.role?.toUpperCase() === "STITCHING";
+
+    if (isCuttingOrStitching) {
+      if (
+        pathname.startsWith("/admin/content") ||
+        pathname.startsWith("/admin/customers") ||
+        pathname.startsWith("/admin/coupons")
+      ) {
+        return false;
+      }
+    }
+
     const required = ROUTE_SECTIONS[pathname];
     if (!required) return true; // unmapped admin route: authentication is enough
     const sections = accessibleSections();
     return required.some((s) => sections.includes(s));
-  }, [isAuthenticated, isCustomer, pathname, accessibleSections]);
+  }, [isAuthenticated, isCustomer, pathname, user, accessibleSections]);
 
   useEffect(() => {
     if (isPublic || isLoading) return;

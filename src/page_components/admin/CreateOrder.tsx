@@ -23,6 +23,8 @@ import { formatDate } from "@/components/customization/AppointmentScheduler";
 import {
   cartCheckoutApi,
   getAndUpdateOrderId,
+  updateOrdersProcessingState,
+  getAllOrders,
 } from "@/services/modules/orders.api";
 import { useToast } from "@/hooks/use-toast";
 import MultiImageBookingModal from "@/components/MultiImageBookingModal";
@@ -51,6 +53,32 @@ const getImgSrc = (src?: any) => {
   }
   if (typeof src === "string") return src;
   return src?.src || src;
+};
+
+const extractMongoIds = (obj: any): string[] => {
+  const ids: Set<string> = new Set();
+  const traverse = (val: any) => {
+    if (!val) return;
+    if (typeof val === "string") {
+      if (/^[0-9a-fA-F]{24}$/.test(val)) {
+        ids.add(val);
+      }
+      return;
+    }
+    if (typeof val === "object") {
+      if (val.id && typeof val.id === "string" && /^[0-9a-fA-F]{24}$/.test(val.id)) {
+        ids.add(val.id);
+      }
+      if (val._id && typeof val._id === "string" && /^[0-9a-fA-F]{24}$/.test(val._id)) {
+        ids.add(val._id);
+      }
+      for (const k of Object.keys(val)) {
+        traverse(val[k]);
+      }
+    }
+  };
+  traverse(obj);
+  return Array.from(ids);
 };
 
 export default function CategoryPage() {
@@ -314,7 +342,29 @@ export default function CategoryPage() {
     mutationFn: (payload: any) => {
       return cartCheckoutApi(payload);
     },
-    onSuccess: () => {
+    onSuccess: async (res: any) => {
+      // Set initial processing state to ORDER_PLACED (Order Created) on backend
+      try {
+        const orderList = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.orders)
+          ? res.orders
+          : res
+          ? [res]
+          : [];
+
+        for (const item of orderList) {
+          const targetId = item?.id || item?._id || item?.orderId;
+          if (targetId) {
+            await updateOrdersProcessingState(targetId, {
+              nextState: "ORDER_PLACED",
+            }).catch(() => {});
+          }
+        }
+      } catch (e) {}
+
       if (typeof window !== "undefined") {
         const pId = localStorage.getItem("pickupId");
         if (pId) {
@@ -360,6 +410,7 @@ export default function CategoryPage() {
       } = data;
 
       const payload = {
+        orderProcessingState: "ORDER_PLACED",
         orderItems: selectedItems.map((item) => {
           const {
             meta,
@@ -375,6 +426,7 @@ export default function CategoryPage() {
             imageUrls,
             items: remaining,
             notes,
+            orderProcessingState: "ORDER_PLACED",
           };
         }),
         customerData: {
@@ -383,7 +435,39 @@ export default function CategoryPage() {
         },
       };
 
-      await checkoutCart(payload);
+      const checkoutResult = await checkoutCart(payload);
+      try {
+        let targetIds = extractMongoIds(checkoutResult);
+
+        if (targetIds.length === 0) {
+          const latest = await getAllOrders(
+            new URLSearchParams({
+              page: "1",
+              limit: "10",
+              sortBy: "newest",
+            }).toString(),
+          );
+          const matched = (latest?.orders || []).filter(
+            (o: any) =>
+              selectedItems.some((item) => item.orderId && o.orderId === item.orderId) ||
+              (customerData.phone && o.customerPhone === customerData.phone),
+          );
+          matched.forEach((m: any) => {
+            const hex = m.id || m._id;
+            if (hex && /^[0-9a-fA-F]{24}$/.test(hex)) targetIds.push(hex);
+          });
+        }
+
+        for (const hexId of targetIds) {
+          await updateOrdersProcessingState(hexId, {
+            nextState: "ORDER_PLACED",
+          }).catch((err) => {
+            console.error("Error setting ORDER_PLACED for order:", hexId, err);
+          });
+        }
+      } catch (e) {
+        console.error("Error overriding order processing state:", e);
+      }
 
       const invoiceCustomer = {
         name: customerData.name ?? "",

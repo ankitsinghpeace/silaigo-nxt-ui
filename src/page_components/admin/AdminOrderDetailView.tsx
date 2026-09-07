@@ -88,29 +88,10 @@ interface AdminOrderDetailViewProps {
   onEditMeasurements: (orderId: string, measurements: any) => void;
 }
 
-const DEFAULT_CUTTING_AGENTS = [
-  {
-    _id: "hafeez_ahmed",
-    userId: "hafeez_ahmed",
-    firstName: "Hafeez",
-    lastName: "Ahmed",
-    email: "hafeez@silaigo.com",
-    role: "CUTTING",
-  },
-  {
-    _id: "test_cutting",
-    userId: "test_cutting",
-    firstName: "test",
-    lastName: "cutting",
-    email: "testcutting@silaigo.com",
-    role: "CUTTING",
-  },
-];
-
 const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
   order,
   canEdit,
-  isReadOnlyProcessingState = false,
+  isReadOnlyProcessingState,
   teamMembersViaRole,
   cuttingAgents = [],
   isAssigningToStitchingAgent,
@@ -128,27 +109,33 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
 }) => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const isPickupCoordinator = user?.role === UserRole.PICKUP_COORDINATOR;
-  const isCuttingAgent = user?.role === UserRole.CUTTING;
-  const isStitchingAgent = user?.role === UserRole.STITCHING;
-  const isAdmin = user?.role === UserRole.ADMIN;
   const queryClient = useQueryClient();
   const [showTimeline, setShowTimeline] = useState(false);
   const [isCustomizationsOpen, setIsCustomizationsOpen] = useState(false);
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
-
-  const [assignedCuttingAgent, setAssignedCuttingAgentState] = useState(() =>
+  const [assignedCuttingAgentState, setAssignedCuttingAgentState] = useState(() =>
     getAssignedCuttingAgent(order.id || order._id)
   );
 
-  React.useEffect(() => {
-    setAssignedCuttingAgentState(getAssignedCuttingAgent(order.id || order._id));
-  }, [order.id, order._id]);
+  const isAdmin = user?.role === UserRole.ADMIN;
+  const isPickupCoordinator = user?.role === UserRole.PICKUP_COORDINATOR;
+  const isCuttingAgent = user?.role === UserRole.CUTTING;
+  const isStitchingAgent = user?.role === UserRole.STITCHING;
+
+  const filteredCuttingAgents = React.useMemo(() => {
+    return Array.isArray(cuttingAgents) ? cuttingAgents : [];
+  }, [cuttingAgents]);
+
+  const activeCuttingAgentValue = React.useMemo(() => {
+    if (!assignedCuttingAgentState?.agentId) return "none";
+    const exists = filteredCuttingAgents.some(
+      (a: any) => (a._id || a.userId || a.id) === assignedCuttingAgentState.agentId
+    );
+    return exists ? assignedCuttingAgentState.agentId : "none";
+  }, [assignedCuttingAgentState, filteredCuttingAgents]);
 
   const handleCuttingAgentChange = (agentId: string) => {
-    const activeList = Array.isArray(cuttingAgents) && cuttingAgents.length > 0
-      ? cuttingAgents
-      : DEFAULT_CUTTING_AGENTS;
+    const activeList = Array.isArray(cuttingAgents) ? cuttingAgents : [];
     const selectedAgent = activeList.find(
       (a: any) => (a._id || a.userId || a.id) === agentId
     );
@@ -163,12 +150,31 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
     toast({ title: "Cutting agent assigned successfully" });
   };
 
-  const filteredCuttingAgents = React.useMemo(() => {
-    if (Array.isArray(cuttingAgents) && cuttingAgents.length > 0) {
-      return cuttingAgents;
+  const [currentProcessingState, setCurrentProcessingState] = useState(
+    order.orderProcessingState || OrderProcessingState.ORDER_PLACED
+  );
+
+  React.useEffect(() => {
+    if (order.orderProcessingState) {
+      setCurrentProcessingState(order.orderProcessingState);
     }
-    return DEFAULT_CUTTING_AGENTS;
-  }, [cuttingAgents]);
+  }, [order.orderProcessingState]);
+
+  const handleProcessingStateChange = (nextState: string) => {
+    setCurrentProcessingState(nextState);
+    onUpdateProcessingState(order.id || order._id, nextState);
+    if (nextState === OrderProcessingState.ORDER_FULFILLED && filteredCuttingAgents.length === 1) {
+      const singleAgent = filteredCuttingAgents[0];
+      const singleAgentId = singleAgent._id || singleAgent.userId || singleAgent.id;
+      const singleAgentName =
+        `${singleAgent.firstName || singleAgent.name || ""} ${singleAgent.lastName || ""}`.trim() || singleAgent.email;
+      setAssignedCuttingAgent(order.id || order._id, singleAgentId, singleAgentName);
+      setAssignedCuttingAgentState(getAssignedCuttingAgent(order.id || order._id));
+      if (onAssignCuttingAgent) {
+        onAssignCuttingAgent(order.id || order._id, singleAgentId, singleAgentName);
+      }
+    }
+  };
 
   const filteredStitchingAgents = React.useMemo(() => {
     if (!Array.isArray(teamMembersViaRole)) return [];
@@ -178,6 +184,45 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
       return String(r).toUpperCase() === "STITCHING";
     });
   }, [teamMembersViaRole]);
+
+  const [assignedStitchingAgentId, setAssignedStitchingAgentId] = useState<string>(() => {
+    return (
+      order.assignedToStitchingAgentId ||
+      order.assignedStitchingAgentId ||
+      order.assignedStitchingAgent?._id ||
+      order.assignedStitchingAgent?.userId ||
+      order.assignedStitchingAgent?.id ||
+      "none"
+    );
+  });
+
+  React.useEffect(() => {
+    const currentId =
+      order.assignedToStitchingAgentId ||
+      order.assignedStitchingAgentId ||
+      order.assignedStitchingAgent?._id ||
+      order.assignedStitchingAgent?.userId ||
+      order.assignedStitchingAgent?.id ||
+      "none";
+    setAssignedStitchingAgentId(currentId);
+  }, [
+    order.assignedToStitchingAgentId,
+    order.assignedStitchingAgentId,
+    order.assignedStitchingAgent,
+  ]);
+
+  const activeStitchingAgentValue = React.useMemo(() => {
+    if (!assignedStitchingAgentId || assignedStitchingAgentId === "none") return "none";
+    const exists = filteredStitchingAgents.some(
+      (a: any) => (a._id || a.userId || a.id) === assignedStitchingAgentId
+    );
+    return exists ? assignedStitchingAgentId : "none";
+  }, [assignedStitchingAgentId, filteredStitchingAgents]);
+
+  const handleStitchingAgentChange = (val: string) => {
+    setAssignedStitchingAgentId(val);
+    onAssignStitchingAgent(order.id || order._id, val === "none" ? "" : val);
+  };
 
   const { data: detail, isLoading } = useQuery({
     queryKey: ["order-detail", order.id],
@@ -234,10 +279,12 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
   return (
     <div className="space-y-5" data-testid="admin-order-detail-view">
       {/* Quick facts */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className={cn("grid gap-3", isCuttingAgent || isStitchingAgent ? "grid-cols-2 md:grid-cols-3" : "grid-cols-2 md:grid-cols-4")}>
         {[
           { label: "Product", value: productName },
-          { label: "Total Amount", value: `₹${Number(totalAmount).toLocaleString()}` },
+          ...(!isCuttingAgent && !isStitchingAgent
+            ? [{ label: "Total Amount", value: `₹${Number(totalAmount).toLocaleString()}` }]
+            : []),
           {
             label: "Delivery",
             value:
@@ -284,7 +331,7 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                           className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2 py-1 text-xs"
                         >
                           {c.title}
-                          {c.price > 0 && <span className="text-muted-foreground">₹{c.price}</span>}
+                          {c.price > 0 && !isCuttingAgent && !isStitchingAgent && <span className="text-muted-foreground">₹{c.price}</span>}
                         </span>
                       ))}
                     </div>
@@ -341,31 +388,33 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
 
         {/* Right column: payment + manage */}
         <div className="space-y-4">
-          <div className="rounded-lg border p-4">
-            <h3 className="text-sm font-semibold mb-3">Payment Summary</h3>
-            <div className="flex items-center justify-between text-sm mb-2">
-              <span className="text-muted-foreground">Order Total</span>
-              <span className="font-semibold">₹{Number(totalAmount).toLocaleString()}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Payment Status</span>
-              <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs", paymentBadge.bg, paymentBadge.text, paymentBadge.border)}>
-                <PaymentIcon className="w-3 h-3" /> {paymentBadge.label}
-              </span>
-            </div>
-            {detail?.payment?.method && (
-              <div className="flex items-center justify-between text-sm mt-2">
-                <span className="text-muted-foreground">Method</span>
-                <span className="font-medium">{detail.payment.method}</span>
+          {!isCuttingAgent && !isStitchingAgent && (
+            <div className="rounded-lg border p-4">
+              <h3 className="text-sm font-semibold mb-3">Payment Summary</h3>
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="text-muted-foreground">Order Total</span>
+                <span className="font-semibold">₹{Number(totalAmount).toLocaleString()}</span>
               </div>
-            )}
-            {detail?.payment?._id && (
-              <div className="flex items-center justify-between text-sm mt-2">
-                <span className="text-muted-foreground">Transaction ID</span>
-                <span className="font-medium break-all text-right">{detail.payment._id}</span>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Payment Status</span>
+                <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs", paymentBadge.bg, paymentBadge.text, paymentBadge.border)}>
+                  <PaymentIcon className="w-3 h-3" /> {paymentBadge.label}
+                </span>
               </div>
-            )}
-          </div>
+              {detail?.payment?.method && (
+                <div className="flex items-center justify-between text-sm mt-2">
+                  <span className="text-muted-foreground">Method</span>
+                  <span className="font-medium">{detail.payment.method}</span>
+                </div>
+              )}
+              {detail?.payment?._id && (
+                <div className="flex items-center justify-between text-sm mt-2">
+                  <span className="text-muted-foreground">Transaction ID</span>
+                  <span className="font-medium break-all text-right">{detail.payment._id}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="rounded-lg border p-4 space-y-4" data-testid="order-manage-panel">
             <h3 className="text-sm font-semibold">Manage Order</h3>
@@ -376,11 +425,11 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                 {isPickupCoordinator ? (
                   <Select
                     value={
-                      order.orderProcessingState === OrderProcessingState.ORDER_FULFILLED
+                      currentProcessingState === OrderProcessingState.ORDER_FULFILLED
                         ? OrderProcessingState.ORDER_FULFILLED
                         : OrderProcessingState.ORDER_PLACED
                     }
-                    onValueChange={(val) => onUpdateProcessingState(order.id, val)}
+                    onValueChange={(val) => handleProcessingStateChange(val)}
                   >
                     <SelectTrigger
                       disabled={!canEdit || isReadOnlyProcessingState}
@@ -389,18 +438,20 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={OrderProcessingState.ORDER_PLACED}>Order Created</SelectItem>
+                      <SelectItem value={OrderProcessingState.ORDER_PLACED}>Order Placed</SelectItem>
                       <SelectItem value={OrderProcessingState.ORDER_FULFILLED}>Order Fulfilled</SelectItem>
                     </SelectContent>
                   </Select>
                 ) : isCuttingAgent ? (
                   <Select
                     value={
-                      order.orderProcessingState === OrderProcessingState.CUTTING_END
+                      currentProcessingState === OrderProcessingState.CUTTING_END
                         ? OrderProcessingState.CUTTING_END
-                        : OrderProcessingState.ORDER_FULFILLED
+                        : currentProcessingState === OrderProcessingState.CUTTING_START
+                          ? OrderProcessingState.CUTTING_START
+                          : OrderProcessingState.ORDER_FULFILLED
                     }
-                    onValueChange={(val) => onUpdateProcessingState(order.id, val)}
+                    onValueChange={(val) => handleProcessingStateChange(val)}
                   >
                     <SelectTrigger
                       disabled={!canEdit && user?.role !== UserRole.CUTTING}
@@ -410,6 +461,9 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={OrderProcessingState.ORDER_FULFILLED}>
+                        Order Fulfilled
+                      </SelectItem>
+                      <SelectItem value={OrderProcessingState.CUTTING_START}>
                         Cutting Started / कटिंग शुरू
                       </SelectItem>
                       <SelectItem value={OrderProcessingState.CUTTING_END}>
@@ -417,10 +471,39 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                ) : isStitchingAgent ? (
+                  <Select
+                    value={
+                      currentProcessingState === OrderProcessingState.STITCHING_END
+                        ? OrderProcessingState.STITCHING_END
+                        : currentProcessingState === OrderProcessingState.STITCHING_START
+                          ? OrderProcessingState.STITCHING_START
+                          : OrderProcessingState.CUTTING_END
+                    }
+                    onValueChange={(val) => handleProcessingStateChange(val)}
+                  >
+                    <SelectTrigger
+                      disabled={!canEdit && user?.role !== UserRole.STITCHING}
+                      data-testid="order-processing-state-select"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={OrderProcessingState.CUTTING_END}>
+                        Cutting Ended / कटिंग खत्म
+                      </SelectItem>
+                      <SelectItem value={OrderProcessingState.STITCHING_START}>
+                        Stitching Started / सिलाई शुरू
+                      </SelectItem>
+                      <SelectItem value={OrderProcessingState.STITCHING_END}>
+                        Stitching Ended / सिलाई खत्म
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <Select
-                    value={order.orderProcessingState}
-                    onValueChange={(val) => onUpdateProcessingState(order.id, val)}
+                    value={currentProcessingState || OrderProcessingState.ORDER_PLACED}
+                    onValueChange={(val) => handleProcessingStateChange(val)}
                   >
                     <SelectTrigger disabled={!canEdit} data-testid="order-processing-state-select">
                       <SelectValue />
@@ -453,11 +536,11 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                 </div>
               )}
 
-              {!isCuttingAgent && (
+              {!isCuttingAgent && !isStitchingAgent && (
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-muted-foreground">Cutting Agent</label>
                   <Select
-                    value={assignedCuttingAgent?.agentId || "none"}
+                    value={activeCuttingAgentValue}
                     onValueChange={(val) => handleCuttingAgentChange(val)}
                   >
                     <SelectTrigger
@@ -481,12 +564,12 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                 </div>
               )}
 
-              {!isPickupCoordinator && (
+              {!isPickupCoordinator && !isStitchingAgent && (
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-muted-foreground">Stitching Agent</label>
                   <Select
-                    value={order.assignedStitchingAgent?._id || order.assignedStitchingAgent?.userId || order.assignedStitchingAgent?.id || "none"}
-                    onValueChange={(val) => onAssignStitchingAgent(order.id, val === "none" ? "" : val)}
+                    value={activeStitchingAgentValue}
+                    onValueChange={(val) => handleStitchingAgentChange(val)}
                   >
                     <SelectTrigger disabled={(!canEdit && !isCuttingAgent) || isAssigningToStitchingAgent} data-testid="order-stitching-agent-select">
                       <SelectValue placeholder="Unassigned" />
@@ -506,7 +589,7 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                 </div>
               )}
 
-              {!isCuttingAgent && (
+              {!isCuttingAgent && !isStitchingAgent && (
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-muted-foreground">Pin to Top</label>
                   <div className="flex items-center gap-2 h-10">
@@ -526,53 +609,32 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                   </div>
                 </div>
               )}
+            </div>
 
-
-
-
-
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-muted-foreground">Pin to Top</label>
-                <div className="flex items-center gap-2 h-10">
-                  <Switch
-                    disabled={isUpdatingPin || !canEdit}
-                    checked={!!order.isPinned}
-                    onCheckedChange={(val) => {
-                      const pinPosition = val ? window.prompt("Enter pin position") : null;
-                      onPinOrder(order.id, val, pinPosition ? Number(pinPosition) : null);
-                    }}
-                    data-testid="order-pin-switch"
-                  />
-                  {isUpdatingPin && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {order.isPinned && (
-                    <span className="text-xs text-muted-foreground">#{order.pinPosition ?? "-"}</span>
-                  )}
+            {!isCuttingAgent && !isStitchingAgent && (
+              <div className="pt-2 border-t">
+                <label className="text-xs text-muted-foreground mb-2 block flex items-center gap-1">
+                  <MessageSquareText className="w-3 h-3" /> Notify Customer (SMS)
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {NOTIFY_STAGES.map((stage) => (
+                    <Button
+                      key={stage.value}
+                      size="sm"
+                      variant="outline"
+                      disabled={isNotifying}
+                      onClick={() => notifyCustomer(stage.value)}
+                      data-testid={`notify-customer-${stage.value}`}
+                    >
+                      {isNotifying && notifyVars === stage.value ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                      ) : null}
+                      {stage.label}
+                    </Button>
+                  ))}
                 </div>
               </div>
-            </div>
-
-            <div className="pt-2 border-t">
-              <label className="text-xs text-muted-foreground mb-2 block flex items-center gap-1">
-                <MessageSquareText className="w-3 h-3" /> Notify Customer (SMS)
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {NOTIFY_STAGES.map((stage) => (
-                  <Button
-                    key={stage.value}
-                    size="sm"
-                    variant="outline"
-                    disabled={isNotifying}
-                    onClick={() => notifyCustomer(stage.value)}
-                    data-testid={`notify-customer-${stage.value}`}
-                  >
-                    {isNotifying && notifyVars === stage.value ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
-                    ) : null}
-                    {stage.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
+            )}
 
             {showAdminActions && (
               <div className="flex flex-wrap gap-2 pt-2 border-t">
