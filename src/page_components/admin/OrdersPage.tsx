@@ -1715,7 +1715,7 @@ const OrdersPage = () => {
           className="w-full mb-4"
         >
           <TabsList className="border-b border-gray-200 bg-transparent p-0 h-auto">
-            {user?.role !== UserRole.CUTTING && (
+            {user?.role !== UserRole.CUTTING && user?.role !== UserRole.STITCHING && (
               <TabsTrigger
                 value="orders"
                 className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
@@ -1748,7 +1748,7 @@ const OrdersPage = () => {
                   {user?.role === UserRole.STITCHING ? "Stitching Queue" : "Cutting Queue"}
                 </TabsTrigger>
               )}
-            {user?.role === UserRole.CUTTING ? (
+            {user?.role === UserRole.CUTTING || user?.role === UserRole.STITCHING ? (
               <TabsTrigger
                 value="orders"
                 className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
@@ -1785,7 +1785,8 @@ const OrdersPage = () => {
               ) : (
                 <div>
                   {(user.role === UserRole.ADMIN ||
-                    user.role === UserRole.CUTTING) && (
+                    user.role === UserRole.CUTTING ||
+                    user.role === UserRole.STITCHING) && (
                       <>
                         <h3 className="md:text-center text-3xl p-2">
                           Pinned Orders
@@ -2320,7 +2321,9 @@ const OrdersPage = () => {
                             <TableHead>Product Name</TableHead>
                             <TableHead>Delivery Date</TableHead>
                             <TableHead>Order Date</TableHead>
-                            <TableHead>Custom Price</TableHead>
+                            {!isCuttingOrStitching && (
+                              <TableHead>Custom Price</TableHead>
+                            )}
                             <TableHead>Action</TableHead>
                             {user.role != UserRole.ADMIN && (
                               <TableHead>Order TimeLine</TableHead>

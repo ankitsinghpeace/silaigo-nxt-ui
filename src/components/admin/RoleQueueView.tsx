@@ -249,12 +249,12 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({
       ) : (
         <div className="rounded-lg border divide-y overflow-hidden">
           <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b">
-            <div className="col-span-12 sm:col-span-4">Order & Customer</div>
-            <div className="col-span-6 sm:col-span-3">Delivery Date</div>
-            <div className="col-span-6 sm:col-span-2">Urgency</div>
-            <div className="col-span-12 sm:col-span-3">
-              {role === "CUTTING" ? "Cutting Agent" : "Stitching Agent"}
-            </div>
+            <div className={cn("col-span-12", role === "CUTTING" ? "sm:col-span-4" : "sm:col-span-5")}>Order & Customer</div>
+            <div className={cn("col-span-6", role === "CUTTING" ? "sm:col-span-3" : "sm:col-span-4")}>Delivery Date</div>
+            <div className={cn("col-span-6", role === "CUTTING" ? "sm:col-span-2" : "sm:col-span-3")}>Urgency</div>
+            {role === "CUTTING" && (
+              <div className="col-span-12 sm:col-span-3">Cutting Agent</div>
+            )}
           </div>
           {queueOrders.map((order: any) => {
             const orderId = order.id || order._id;
@@ -268,7 +268,7 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({
                 onClick={() => onOpenOrder(orderId)}
                 data-testid={`queue-order-row-${orderId}`}
               >
-                <div className="col-span-12 sm:col-span-4 min-w-0">
+                <div className={cn("col-span-12 min-w-0", role === "CUTTING" ? "sm:col-span-4" : "sm:col-span-5")}>
                   <button
                     type="button"
                     onClick={() => onOpenOrder(orderId)}
@@ -279,14 +279,14 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({
                   <div className="font-medium truncate">{order.customerName}</div>
                 </div>
 
-                <div className="col-span-6 sm:col-span-3 text-xs text-muted-foreground">
+                <div className={cn("col-span-6 text-xs text-muted-foreground", role === "CUTTING" ? "sm:col-span-3" : "sm:col-span-4")}>
                   {order.appointmentDate && !isNaN(new Date(order.appointmentDate).getTime())
                     ? format(new Date(order.appointmentDate), "dd MMM yyyy")
                     : "No date"}
                   {order.appointmentTime ? ` · ${order.appointmentTime}` : ""}
                 </div>
 
-                <div className="col-span-6 sm:col-span-2">
+                <div className={cn("col-span-6", role === "CUTTING" ? "sm:col-span-2" : "sm:col-span-3")}>
                   <span
                     className={cn(
                       "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
