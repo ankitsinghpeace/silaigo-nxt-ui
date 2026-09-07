@@ -329,7 +329,7 @@ export default function CategoryPage() {
                 JSON.stringify(createdPickups),
               );
             }
-          } catch (e) {}
+          } catch (e) { }
           localStorage.removeItem("pickupId");
         }
       }
@@ -592,9 +592,8 @@ export default function CategoryPage() {
               imageType.current = "Fabric";
               setIsImageModalOpened(true);
             }}
-            className={`border w-[50%] md:w-[20%] rounded overflow-hidden cursor-pointer ${
-              fabricImage ? "ring-2 ring-primary" : ""
-            }`}
+            className={`border w-[50%] md:w-[20%] rounded overflow-hidden cursor-pointer ${fabricImage ? "ring-2 ring-primary" : ""
+              }`}
           >
             <img
               src={getImgSrc(fabricImage)}

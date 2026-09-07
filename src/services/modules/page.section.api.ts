@@ -40,7 +40,7 @@ export const fetchPageSectionData = async (
   );
 
   if (Array.isArray(section) && !isEditPage) {
-    section = section.filter((item: any) => item?.isActive === true);
+    section = section.filter((item: any) => item?.isActive !== false);
   }
 
   return { [isActiveKey]: section, ...rest };

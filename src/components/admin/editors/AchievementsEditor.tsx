@@ -38,7 +38,11 @@ const AchievementsEditor: React.FC<AchievementsEditorProps> = ({
 
   const handleSaveChanges = async () => {
     try {
-      await UpdatePageSectionData(achievements, "achievements");
+      const sanitized = achievements.map((a) => ({
+        ...a,
+        isActive: a.isActive !== false,
+      }));
+      await UpdatePageSectionData(sanitized, "achievements");
       toast({
         title: "Changes saved",
         description: "Achievements have been updated successfully.",
@@ -63,6 +67,7 @@ const AchievementsEditor: React.FC<AchievementsEditorProps> = ({
       icon: "award",
       value: "New Value",
       label: "New Label",
+      isActive: true,
     };
 
     setCurrentAchievement(newAchievement);

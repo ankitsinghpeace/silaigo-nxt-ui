@@ -307,7 +307,7 @@ const ContactPage = () => {
               <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
                 <Clock className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="font-medium">5+ Years</h3>
+              <h3 className="font-medium">2+ Years</h3>
               <p className="text-sm text-gray-600">Of tailoring excellence</p>
             </div>
 
@@ -315,7 +315,7 @@ const ContactPage = () => {
               <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
                 <Users className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="font-medium">50+ Team Members</h3>
+              <h3 className="font-medium">10+ Team Members</h3>
               <p className="text-sm text-gray-600">
                 Skilled artisans & designers
               </p>
@@ -325,7 +325,7 @@ const ContactPage = () => {
               <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
                 <AtSign className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="font-medium">10,000+ Customers</h3>
+              <h3 className="font-medium">1,200 Customers</h3>
               <p className="text-sm text-gray-600">Across India and globally</p>
             </div>
 
@@ -333,8 +333,8 @@ const ContactPage = () => {
               <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
                 <MessageSquare className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="font-medium">24/7 Support</h3>
-              <p className="text-sm text-gray-600">Always here to help you</p>
+              <h3 className="font-medium">48 hours</h3>
+              <p className="text-sm text-gray-600">Turnaround time</p>
             </div>
           </div>
         </div>

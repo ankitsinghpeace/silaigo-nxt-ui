@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Plus, Minus, Loader2 } from "lucide-react";
-import { getCustomizationMappingOptions } from "@/services";
+import { getCustomizationMappingOptions, getCustomizationData } from "@/services";
 import { useQuery } from "@tanstack/react-query";
 
 import PlaceholderImage from "../assets/custome-design-image-placeholder.svg";
@@ -50,13 +50,32 @@ const DesignGrid = ({
   const { data: designs = [], isLoading } = useQuery<Design[]>({
     queryKey: ["customizationOptions", type, styleId, catId],
     queryFn: async () => {
-      const data = await getCustomizationMappingOptions({
-        customizationType: type,
-        subCategoryId: styleId,
-        categoryId: catId,
-      });
+      let data: any[] = [];
+      try {
+        data = await getCustomizationMappingOptions({
+          customizationType: type,
+          subCategoryId: styleId,
+          categoryId: catId,
+        });
+      } catch (e) {
+        data = [];
+      }
 
-      const newData = data.map((elem) => ({
+      if (!data || data.length === 0) {
+        try {
+          const allCustomizations = await getCustomizationData();
+          const match = allCustomizations?.find(
+            (c: any) => c.type?.toLowerCase() === type?.toLowerCase(),
+          );
+          if (match && Array.isArray(match.options)) {
+            data = match.options;
+          }
+        } catch (e) {
+          data = [];
+        }
+      }
+
+      const newData = data.map((elem: any) => ({
         ...elem,
         category:
           elem.complexity === "Basic"

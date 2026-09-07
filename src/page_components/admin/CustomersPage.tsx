@@ -393,10 +393,7 @@ const CustomersPage = () => {
           <div>
             <label style="display:block; margin-bottom:4px; font-weight:500;">Gender</label>
             <select id="swal-input-gender" class="swal2-input" style="width:100%; margin:0; padding:8px;">
-              <option value="${Gender.MALE}">Male</option>
               <option value="${Gender.FEMALE}">Female</option>
-              <option value="${Gender.OTHER}">Other</option>
-              <option value="${Gender.NOT_SPECIFIED}">Not Specified</option>
             </select>
 
             <div style="display:flex; flex-direction:column; gap:4px;margin-top:10px;">
@@ -712,9 +709,9 @@ const CustomersPage = () => {
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {searchParams.startDate
                         ? format(
-                            new Date(searchParams.startDate),
-                            "PPP",
-                          )
+                          new Date(searchParams.startDate),
+                          "PPP",
+                        )
                         : "Pick a date"}
                     </Button>
                   </PopoverTrigger>
@@ -822,10 +819,9 @@ const CustomersPage = () => {
 
               <input
                 className="flex-1 border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder={`Enter ${
-                  SEARCH_FIELDS.find((f) => f.value === searchField)?.label ||
+                placeholder={`Enter ${SEARCH_FIELDS.find((f) => f.value === searchField)?.label ||
                   "value"
-                }...`}
+                  }...`}
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
                 onKeyDown={(e) => {

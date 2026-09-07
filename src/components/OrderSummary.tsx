@@ -45,22 +45,22 @@ export const getTotalCustomizationPrice = (
   customizations: CustomizationDesign[],
   selectedOption: any,
 ) => {
-  let customizationPrice: number = customizations.reduce(
+  let customizationPrice: number = (customizations || []).reduce(
     (sum, d) =>
-      sum + (d.discountedPrice >= 0 ? d.discountedPrice : d.price || 0),
+      sum + (Number(d?.discountedPrice) >= 0 ? Number(d.discountedPrice) : Number(d?.price) || 0),
     0,
   );
 
-  if (selectedOption) {
+  if (selectedOption && Array.isArray(selectedOption)) {
     for (let i = 0; i < selectedOption.length; i++) {
       customizationPrice +=
-        selectedOption[i]?.discountedPrice >= 0
+        Number(selectedOption[i]?.discountedPrice) >= 0
           ? Number(selectedOption[i]?.discountedPrice)
           : Number(selectedOption[i]?.price) || 0;
     }
   }
 
-  return customizationPrice;
+  return isNaN(customizationPrice) ? 0 : customizationPrice;
 };
 
 const OrderSummary = ({
@@ -108,6 +108,12 @@ const OrderSummary = ({
     retry: false,
     staleTime: 1000 * 60 * 10,
   });
+
+  const baseStylePrice =
+    subCategoryStyleDetails?.discountedPrice ??
+    subCategoryStyleDetails?.price ??
+    0;
+  const grandTotal = (Number(baseStylePrice) || 0) + (Number(totalCustomizationPrice) || 0);
 
   const handleRemoveCustomization = (id: string) => {
     setSelectedCustomizations((prev) => prev.filter((d) => d._id !== id));
@@ -167,7 +173,7 @@ const OrderSummary = ({
       imageUrls: uplaodedImageUrls || [],
       returnUrl: window.location.href,
       name: subCategoryStyleDetails?.name,
-      price: totalCustomizationPrice + subCategoryStyleDetails?.discountedPrice,
+      price: grandTotal,
       productImage: subCategoryStyleDetails?.image,
     };
     toast({
@@ -192,7 +198,7 @@ const OrderSummary = ({
             <span className="text-gray-600">
               {subCategoryStyleDetails?.name}
             </span>
-            <span>₹{subCategoryStyleDetails?.discountedPrice}</span>
+            <span>₹{baseStylePrice}</span>
           </div>
 
           <div className="flex flex-col gap-3">
@@ -276,11 +282,7 @@ const OrderSummary = ({
           <div className="border-t pt-2">
             <div className="flex justify-between font-semibold">
               <span>Total</span>
-              <span>
-                ₹
-                {subCategoryStyleDetails?.discountedPrice +
-                  totalCustomizationPrice}
-              </span>
+              <span>₹{grandTotal}</span>
             </div>
           </div>
         </div>

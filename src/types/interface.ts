@@ -36,6 +36,7 @@ export interface Achievement {
   icon: string;
   value: string;
   label: string;
+  isActive?: boolean;
 }
 
 export interface Category {

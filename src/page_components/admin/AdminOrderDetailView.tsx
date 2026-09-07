@@ -41,6 +41,7 @@ import UpdateOrderCustomizations from "@/page_components/admin/UpdateOrderCustom
 import UpdateOrderOptions from "@/page_components/admin/UpdateOrderOptions";
 import { cn } from "@/lib/utils";
 import { PROCESSING_STAGE_SEQUENCE, STAGE_LABELS } from "@/lib/orderStageConfig";
+import { getAssignedCuttingAgent, setAssignedCuttingAgent } from "@/lib/cuttingAgentStore";
 
 const ORDER_STATUS_EDIT_OPTIONS = [OrderStatus.COMPLETED, OrderStatus.CANCELLED];
 
@@ -48,11 +49,11 @@ const NOTIFY_STAGES: {
   value: "picked_up" | "ready" | "dispatched" | "delivered";
   label: string;
 }[] = [
-  { value: "picked_up", label: "Picked Up" },
-  { value: "ready", label: "Almost Ready" },
-  { value: "dispatched", label: "Out for Delivery" },
-  { value: "delivered", label: "Delivered" },
-];
+    { value: "picked_up", label: "Picked Up" },
+    { value: "ready", label: "Almost Ready" },
+    { value: "dispatched", label: "Out for Delivery" },
+    { value: "delivered", label: "Delivered" },
+  ];
 
 const getPaymentBadge = (status?: string) => {
   switch (status) {
@@ -72,11 +73,13 @@ interface AdminOrderDetailViewProps {
   canEdit: boolean;
   isReadOnlyProcessingState?: boolean;
   teamMembersViaRole: any[];
+  cuttingAgents?: any[];
   isAssigningToStitchingAgent: boolean;
   isUpdatingPin: boolean;
   isDuplicating: boolean;
   showAdminActions: boolean;
   onAssignStitchingAgent: (orderId: string, agentId: string) => void;
+  onAssignCuttingAgent?: (orderId: string, agentId: string, agentName?: string) => void;
   onUpdateProcessingState: (orderId: string, nextState: string) => void;
   onUpdateOrderStatus: (orderId: string, status: string) => void;
   onPinOrder: (orderId: string, isPinned: boolean, pinPosition: number | null) => void;
@@ -85,16 +88,37 @@ interface AdminOrderDetailViewProps {
   onEditMeasurements: (orderId: string, measurements: any) => void;
 }
 
+const DEFAULT_CUTTING_AGENTS = [
+  {
+    _id: "hafeez_ahmed",
+    userId: "hafeez_ahmed",
+    firstName: "Hafeez",
+    lastName: "Ahmed",
+    email: "hafeez@silaigo.com",
+    role: "CUTTING",
+  },
+  {
+    _id: "test_cutting",
+    userId: "test_cutting",
+    firstName: "test",
+    lastName: "cutting",
+    email: "testcutting@silaigo.com",
+    role: "CUTTING",
+  },
+];
+
 const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
   order,
   canEdit,
   isReadOnlyProcessingState = false,
   teamMembersViaRole,
+  cuttingAgents = [],
   isAssigningToStitchingAgent,
   isUpdatingPin,
   isDuplicating,
   showAdminActions,
   onAssignStitchingAgent,
+  onAssignCuttingAgent,
   onUpdateProcessingState,
   onUpdateOrderStatus,
   onPinOrder,
@@ -105,10 +129,55 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
   const { toast } = useToast();
   const { user } = useAuth();
   const isPickupCoordinator = user?.role === UserRole.PICKUP_COORDINATOR;
+  const isCuttingAgent = user?.role === UserRole.CUTTING;
+  const isStitchingAgent = user?.role === UserRole.STITCHING;
+  const isAdmin = user?.role === UserRole.ADMIN;
   const queryClient = useQueryClient();
   const [showTimeline, setShowTimeline] = useState(false);
   const [isCustomizationsOpen, setIsCustomizationsOpen] = useState(false);
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+
+  const [assignedCuttingAgent, setAssignedCuttingAgentState] = useState(() =>
+    getAssignedCuttingAgent(order.id || order._id)
+  );
+
+  React.useEffect(() => {
+    setAssignedCuttingAgentState(getAssignedCuttingAgent(order.id || order._id));
+  }, [order.id, order._id]);
+
+  const handleCuttingAgentChange = (agentId: string) => {
+    const activeList = Array.isArray(cuttingAgents) && cuttingAgents.length > 0
+      ? cuttingAgents
+      : DEFAULT_CUTTING_AGENTS;
+    const selectedAgent = activeList.find(
+      (a: any) => (a._id || a.userId || a.id) === agentId
+    );
+    const agentName = selectedAgent
+      ? `${selectedAgent.firstName || selectedAgent.name || ""} ${selectedAgent.lastName || ""}`.trim()
+      : undefined;
+    setAssignedCuttingAgent(order.id || order._id, agentId === "none" ? "" : agentId, agentName);
+    setAssignedCuttingAgentState(getAssignedCuttingAgent(order.id || order._id));
+    if (onAssignCuttingAgent) {
+      onAssignCuttingAgent(order.id || order._id, agentId === "none" ? "" : agentId, agentName);
+    }
+    toast({ title: "Cutting agent assigned successfully" });
+  };
+
+  const filteredCuttingAgents = React.useMemo(() => {
+    if (Array.isArray(cuttingAgents) && cuttingAgents.length > 0) {
+      return cuttingAgents;
+    }
+    return DEFAULT_CUTTING_AGENTS;
+  }, [cuttingAgents]);
+
+  const filteredStitchingAgents = React.useMemo(() => {
+    if (!Array.isArray(teamMembersViaRole)) return [];
+    return teamMembersViaRole.filter((agent: any) => {
+      const r = typeof agent.role === "string" ? agent.role : agent.role?.code || agent.role?.name;
+      if (!r) return true;
+      return String(r).toUpperCase() === "STITCHING";
+    });
+  }, [teamMembersViaRole]);
 
   const { data: detail, isLoading } = useQuery({
     queryKey: ["order-detail", order.id],
@@ -149,10 +218,10 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
   const allImageUrls: string[] = Array.isArray(order.imageUrls)
     ? order.imageUrls
     : Array.isArray(detail?.order?.imageUrls)
-    ? detail.order.imageUrls
-    : Array.isArray(detail?.imageUrls)
-    ? detail.imageUrls
-    : [];
+      ? detail.order.imageUrls
+      : Array.isArray(detail?.imageUrls)
+        ? detail.imageUrls
+        : [];
 
   const fabricImageUrl =
     allImageUrls.find(
@@ -237,21 +306,24 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
             )}
           </div>
 
-          {detail?.address && (
-            <div className="rounded-lg border p-4">
-              <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                <MapPin className="w-4 h-4" /> Delivery Address
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {detail.address.name} · {detail.address.phone}
-                <br />
-                {detail.address.addressLine1}
-                {detail.address.addressLine2 ? `, ${detail.address.addressLine2}` : ""}
-                <br />
-                {detail.address.city}, {detail.address.state} - {detail.address.pincode}
-              </p>
-            </div>
-          )}
+          {(isAdmin || isPickupCoordinator) && (detail?.address || order?.address) && (() => {
+            const address = detail?.address || order?.address;
+            return (
+              <div className="rounded-lg border p-4">
+                <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                  <MapPin className="w-4 h-4" /> Delivery Address
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {address.name || address.firstName || order.customerName || "—"} · {address.phone || order.customerPhone || "—"}
+                  <br />
+                  {address.addressLine1}
+                  {address.addressLine2 ? `, ${address.addressLine2}` : ""}
+                  <br />
+                  {address.city}, {address.state} - {address.pincode}
+                </p>
+              </div>
+            );
+          })()}
 
           {measurements && (
             <div className="rounded-lg border p-2">
@@ -321,6 +393,30 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                       <SelectItem value={OrderProcessingState.ORDER_FULFILLED}>Order Fulfilled</SelectItem>
                     </SelectContent>
                   </Select>
+                ) : isCuttingAgent ? (
+                  <Select
+                    value={
+                      order.orderProcessingState === OrderProcessingState.CUTTING_END
+                        ? OrderProcessingState.CUTTING_END
+                        : OrderProcessingState.ORDER_FULFILLED
+                    }
+                    onValueChange={(val) => onUpdateProcessingState(order.id, val)}
+                  >
+                    <SelectTrigger
+                      disabled={!canEdit && user?.role !== UserRole.CUTTING}
+                      data-testid="order-processing-state-select"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={OrderProcessingState.ORDER_FULFILLED}>
+                        Cutting Started / कटिंग शुरू
+                      </SelectItem>
+                      <SelectItem value={OrderProcessingState.CUTTING_END}>
+                        Cutting Ended / कटिंग खत्म
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <Select
                     value={order.orderProcessingState}
@@ -338,7 +434,7 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                 )}
               </div>
 
-              {!isPickupCoordinator && (
+              {!isPickupCoordinator && !isCuttingAgent && !isStitchingAgent && (
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-muted-foreground">Order Status</label>
                   <Select
@@ -354,6 +450,80 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              )}
+
+              {!isCuttingAgent && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">Cutting Agent</label>
+                  <Select
+                    value={assignedCuttingAgent?.agentId || "none"}
+                    onValueChange={(val) => handleCuttingAgentChange(val)}
+                  >
+                    <SelectTrigger
+                      disabled={!canEdit && user?.role !== UserRole.PICKUP_COORDINATOR && user?.role !== UserRole.ADMIN}
+                      data-testid="order-cutting-agent-select"
+                    >
+                      <SelectValue placeholder="Unassigned" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Unassigned</SelectItem>
+                      {filteredCuttingAgents.map((agent: any) => {
+                        const agentId = agent._id || agent.userId || agent.id;
+                        return (
+                          <SelectItem key={agentId} value={agentId}>
+                            {`${agent.firstName || agent.name || ""} ${agent.lastName || ""}`.trim() || agent.email}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {!isPickupCoordinator && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">Stitching Agent</label>
+                  <Select
+                    value={order.assignedStitchingAgent?._id || order.assignedStitchingAgent?.userId || order.assignedStitchingAgent?.id || "none"}
+                    onValueChange={(val) => onAssignStitchingAgent(order.id, val === "none" ? "" : val)}
+                  >
+                    <SelectTrigger disabled={(!canEdit && !isCuttingAgent) || isAssigningToStitchingAgent} data-testid="order-stitching-agent-select">
+                      <SelectValue placeholder="Unassigned" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Unassigned</SelectItem>
+                      {filteredStitchingAgents.map((agent: any) => {
+                        const agentId = agent._id || agent.userId || agent.id;
+                        return (
+                          <SelectItem key={agentId} value={agentId}>
+                            {`${agent.firstName || agent.name || ""} ${agent.lastName || ""}`.trim() || agent.email}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {!isCuttingAgent && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">Pin to Top</label>
+                  <div className="flex items-center gap-2 h-10">
+                    <Switch
+                      disabled={isUpdatingPin || !canEdit}
+                      checked={!!order.isPinned}
+                      onCheckedChange={(val) => {
+                        const pinPosition = val ? window.prompt("Enter pin position") : null;
+                        onPinOrder(order.id, val, pinPosition ? Number(pinPosition) : null);
+                      }}
+                      data-testid="order-pin-switch"
+                    />
+                    {isUpdatingPin && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {order.isPinned && (
+                      <span className="text-xs text-muted-foreground">#{order.pinPosition ?? "-"}</span>
+                    )}
+                  </div>
                 </div>
               )}
 

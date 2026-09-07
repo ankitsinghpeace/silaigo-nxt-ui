@@ -72,7 +72,7 @@ import {
   DialogOverlay,
   DialogPortal,
 } from "@radix-ui/react-dialog";
-import { deleteOrder, getTeamMembersViaRole, UserRole } from "@/services";
+import { deleteOrder, getTeamMembers, getTeamMembersViaRole, UserRole } from "@/services";
 import OrderTimelineView from "@/components/OrderTImeLineView";
 import { json2csv } from "json-2-csv";
 import Swal from "sweetalert2";
@@ -84,6 +84,7 @@ import { TabsContent } from "@radix-ui/react-tabs";
 import PickupsPage from "@/components/admin/PickupsPage";
 import AdminOrderDetailView from "@/page_components/admin/AdminOrderDetailView";
 import RoleQueueView from "@/components/admin/RoleQueueView";
+import { setAssignedCuttingAgent } from "@/lib/cuttingAgentStore";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -594,11 +595,15 @@ const OrdersPage = () => {
 
   const selectedOrder = useMemo(() => {
     if (!selectedOrderId) return null;
-    return (
-      (orders || []).find((o: any) => o.id === selectedOrderId) ||
-      (pinnedOrders || []).find((o: any) => o.id === selectedOrderId) ||
-      null
-    );
+    const found =
+      (orders || []).find((o: any) => o.id === selectedOrderId || o._id === selectedOrderId) ||
+      (pinnedOrders || []).find((o: any) => o.id === selectedOrderId || o._id === selectedOrderId);
+    if (found) return found;
+    return {
+      id: selectedOrderId,
+      _id: selectedOrderId,
+      orderId: selectedOrderId,
+    };
   }, [selectedOrderId, orders, pinnedOrders]);
 
   const renderOrderDetail = (order: any) => (
@@ -760,7 +765,7 @@ const OrdersPage = () => {
       orderId: string;
       nextState: string;
     }) => {
-      if (!canEdit) {
+      if (!canEdit && user?.role !== UserRole.CUTTING && user?.role !== UserRole.PICKUP_COORDINATOR && user?.role !== UserRole.ADMIN) {
         return Promise.reject(
           new Error("You don't have permission to update order status"),
         );
@@ -768,6 +773,20 @@ const OrdersPage = () => {
       return updateOrdersProcessingState(orderId, { nextState });
     },
     onSuccess: (res, { orderId, nextState }) => {
+      if (
+        nextState === "ORDER_FULFILLED" &&
+        Array.isArray(cuttingAgents) &&
+        cuttingAgents.length === 1
+      ) {
+        const singleAgent = cuttingAgents[0];
+        const singleAgentId =
+          singleAgent._id || singleAgent.userId || singleAgent.id;
+        const singleAgentName =
+          `${singleAgent.firstName || singleAgent.name || ""} ${singleAgent.lastName || ""}`.trim() ||
+          singleAgent.email;
+        setAssignedCuttingAgent(orderId, singleAgentId, singleAgentName);
+      }
+
       // refetchOrders();
       queryClient.setQueryData(
         ["orders", queryString],
@@ -1044,7 +1063,7 @@ const OrdersPage = () => {
     retry: false,
   });
 
-  // team members via role
+  // team members via role (stitching)
   const { data: teamMembersViaRole, error: teamMembersViaRoleError } = useQuery(
     {
       queryKey: ["teamMembers"],
@@ -1057,6 +1076,39 @@ const OrdersPage = () => {
       gcTime: 1000 * 60 * 5,
     },
   );
+
+  // cutting agents via role
+  const { data: cuttingAgents = [] } = useQuery({
+    queryKey: ["cuttingAgents"],
+    queryFn: async () => {
+      // 1. Try role-specific endpoint
+      try {
+        const res = await getTeamMembersViaRole(UserRole.CUTTING);
+        const list = Array.isArray(res) ? res : res?.data || [];
+        if (Array.isArray(list) && list.length > 0) {
+          return list;
+        }
+      } catch (e) {}
+
+      // 2. Fallback to all team members endpoint
+      try {
+        const allMembers = await getTeamMembers();
+        const list = Array.isArray(allMembers) ? allMembers : allMembers?.data || [];
+        if (Array.isArray(list)) {
+          return list.filter((m: any) => {
+            const roleVal = typeof m.role === "string" ? m.role : m.role?.code || m.role?.name || m.role?.roleName || "";
+            return String(roleVal).toUpperCase().includes("CUT");
+          });
+        }
+      } catch (e) {}
+
+      return [];
+    },
+    retry: 2,
+    retryDelay: 1000,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 5,
+  });
 
   // assign stitching agent
   const {
@@ -1599,17 +1651,19 @@ const OrdersPage = () => {
           className="w-full mb-4"
         >
           <TabsList className="border-b border-gray-200 bg-transparent p-0 h-auto">
-            <TabsTrigger
-              value="orders"
-              className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
-              onClick={() => {
-                const newQuery = { ...router.query };
-                delete newQuery.all_orders;
-                router.push({ pathname: router.pathname, query: newQuery });
-              }}
-            >
-              Orders
-            </TabsTrigger>
+            {user?.role !== UserRole.CUTTING && (
+              <TabsTrigger
+                value="orders"
+                className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
+                onClick={() => {
+                  const newQuery = { ...router.query };
+                  delete newQuery.all_orders;
+                  router.push({ pathname: router.pathname, query: newQuery });
+                }}
+              >
+                Orders
+              </TabsTrigger>
+            )}
             {(user?.role === UserRole.ADMIN ||
               user?.role === UserRole.PICKUP_COORDINATOR) && (
                 <TabsTrigger
@@ -1630,19 +1684,31 @@ const OrdersPage = () => {
                   {user?.role === UserRole.STITCHING ? "Stitching Queue" : "Cutting Queue"}
                 </TabsTrigger>
               )}
-            {user?.role != UserRole.ADMIN && (
-              <Button
-                value="all_orders"
-                className={cn(
-                  "px-4 py-2 text-base font-semibold text-gray-600 bg-transparent  hover:bg-primary",
-                  searchParams.all_orders && "bg-primary text-white",
-                )}
+            {user?.role === UserRole.CUTTING ? (
+              <TabsTrigger
+                value="orders"
+                className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
                 onClick={() => {
                   setSearchParams({ all_orders: "1" });
                 }}
               >
                 All orders
-              </Button>
+              </TabsTrigger>
+            ) : (
+              user?.role !== UserRole.ADMIN && (
+                <Button
+                  value="all_orders"
+                  className={cn(
+                    "px-4 py-2 text-base font-semibold text-gray-600 bg-transparent  hover:bg-primary",
+                    searchParams.all_orders && "bg-primary text-white",
+                  )}
+                  onClick={() => {
+                    setSearchParams({ all_orders: "1" });
+                  }}
+                >
+                  All orders
+                </Button>
+              )
             )}
           </TabsList>
 
