@@ -19,7 +19,7 @@ const ProfileCustomerCareTab: React.FC = () => {
       hours: "Mon-Sat: 9:00 AM - 8:00 PM",
     },
     email: {
-      address: "silaigo.offical@gmail.com",
+      address: "silaigo.official@gmail.com",
       response: "We'll respond within 24 hours",
     },
     whatsapp: {

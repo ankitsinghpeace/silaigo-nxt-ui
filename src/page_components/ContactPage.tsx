@@ -112,10 +112,10 @@ const ContactPage = () => {
                   We'll respond within 24 hours
                 </p>
                 <a
-                  href="mailto:info@silaigo.com"
+                  href="mailto:silaigo.official@gmail.com"
                   className="text-primary hover:underline"
                 >
-                  silaigo.offical@gmail.com
+                  silaigo.official@gmail.com
                 </a>
               </CardContent>
             </Card>

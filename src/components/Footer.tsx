@@ -54,7 +54,7 @@ const Footer: React.FC = () => {
             </div>
             <div className="flex items-center space-x-1">
               <Mail size={12} />
-              <span className="truncate">support@silai.go</span>
+              <span className="truncate">silaigo.official@gmail.com</span>
             </div>
           </div>
 
@@ -82,8 +82,9 @@ const Footer: React.FC = () => {
           <div>
             <h2 className="font-playfair text-xl mb-3">SilaiGo</h2>
             <p className="text-white/70 text-sm mb-4">
-              India’s smartest tailoring platform—where tradition meets tech.
-              Personalized fits, doorstep service, and AI-powered craftsmanship.
+              India’s modern tailoring platform—combining traditional
+              craftsmanship with technology, personalized fits, and convenient
+              doorstep service.
             </p>
             <div className="flex space-x-4">
               <a
@@ -153,7 +154,7 @@ const Footer: React.FC = () => {
               </li>
               <li className="flex items-center space-x-2">
                 <Mail size={16} className="text-primary" />
-                <span>silaigo.offical@gmail.com</span>
+                <span>silaigo.official@gmail.com</span>
               </li>
             </ul>
           </div>

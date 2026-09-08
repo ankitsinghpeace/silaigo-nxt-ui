@@ -1,390 +1,396 @@
 "use client";
+
 import { MetaTagsProvider } from "@/components/MetaTagsProvider";
 import React from "react";
 
+const termsSections = [
+  {
+    id: 1,
+    title: "1. About SILAIGO",
+    content: [
+      "SILAIGO provides custom tailoring, stitching, alteration, design assistance, pickup and delivery, and related garment services.",
+      "Our services may include stitching of suits, kurtis, blouses, dresses, lehengas, sharara sets, co-ord sets, ready-to-wear sarees, and other garments offered through our website or customer service channels.",
+      "The availability of a particular service, design, material, location, or turnaround time may depend on the specific order.",
+    ],
+  },
+  {
+    id: 2,
+    title: "2. Booking, Consultation and Order Confirmation",
+    content: [
+      "Customers may initially receive a tentative estimate based on the information available before pickup.",
+      "The final price is determined at the time of pickup after reviewing the requested design, measurements, fabric, materials, construction requirements, and any additional services or modifications.",
+      "If the requested design and scope remain consistent with the price previously discussed or agreed over a call, SILAIGO will proceed on that basis.",
+      "If additional requirements or modifications are identified at pickup, the applicable additional charges will be communicated to the customer.",
+      "An order will be considered confirmed once the customer accepts either the original agreed scope and price or the revised scope and price, and the pickup representative leaves the customer’s premises with the order materials.",
+      "Once an order is confirmed, the applicable production and cancellation rules in these Terms will apply.",
+    ],
+  },
+  {
+    id: 3,
+    title: "3. Pickup Timing",
+    content: [
+      "Pickup times are estimated rather than exact appointments.",
+      "A variation of approximately one hour before or after the scheduled pickup time may occur due to traffic, routing, field operations, customer availability, or other practical circumstances.",
+      "If SILAIGO is unable to complete the pickup within a reasonable period due to circumstances on SILAIGO’s side, the customer may reschedule or cancel the pickup without the late-cancellation fee.",
+    ],
+  },
+  {
+    id: 4,
+    title: "4. Pickup Cancellation and No-Show Charges",
+    content: [
+      "A customer may cancel a scheduled pickup up to 4 hours before the scheduled pickup time without charge.",
+      "If a pickup is cancelled less than 4 hours before the scheduled pickup time, SILAIGO may charge a ₹200 pickup cancellation charge, as the pickup representative may already have been assigned or dispatched.",
+      "If the pickup representative reaches the location within the applicable pickup window but the customer is unavailable, unreachable, unable to provide the fabric, or otherwise unable to complete the handover, a ₹200 pickup failure/no-show charge may apply.",
+      "Where such a charge applies, it may need to be settled before another pickup is scheduled.",
+    ],
+  },
+  {
+    id: 5,
+    title: "5. Final Price at Pickup",
+    content: [
+      "The standard prices displayed by SILAIGO are applicable to the corresponding standard services and stated specifications.",
+      "Additional charges may apply where the customer’s actual requirements differ from the standard service, including additional design work, lining, embellishments, accessories, construction requirements, alterations, or other requested additions.",
+      "Where additional requirements are identified during pickup, SILAIGO will communicate the applicable revised price.",
+      "If the customer does not wish to proceed with the revised requirements, the customer may choose to proceed with the original design and price previously agreed, where reasonably possible.",
+      "If neither the original arrangement nor the revised arrangement is accepted by the customer, the pickup may be cancelled and a ₹200 pickup charge may apply.",
+    ],
+  },
+  {
+    id: 6,
+    title: "6. Customer-Provided Fabric and Materials",
+    content: [
+      "Customers are responsible for providing sufficient fabric and other materials reasonably suitable for the requested garment.",
+      "SILAIGO may assess the condition, quantity, suitability and characteristics of customer-provided fabric or materials.",
+      "Where reasonably possible, SILAIGO may contact the customer if a material issue is identified that may materially affect the requested garment.",
+      "Depending on the circumstances, SILAIGO may make reasonable adjustments or modifications necessary to complete the order, or may decline or discontinue the relevant service where completion is not reasonably possible.",
+      "SILAIGO is not responsible for problems arising from inherent defects, prior damage, inadequate quantity, unsuitable characteristics, or other conditions of customer-provided materials.",
+    ],
+  },
+  {
+    id: 7,
+    title: "7. Insufficient Fabric",
+    content: [
+      "If the supplied fabric is insufficient for the requested garment, SILAIGO may make a reasonable modification where possible.",
+      "Where the issue materially affects the requested design, SILAIGO will attempt to contact the customer when reasonably practicable.",
+      "If the customer cannot be reached, SILAIGO may make a reasonable modification where possible.",
+      "If the requested garment cannot reasonably be completed using the available material, SILAIGO may inform the customer and return the unfinished order/material.",
+    ],
+  },
+  {
+    id: 8,
+    title: "8. Customer-Provided Accessories and Special Materials",
+    content: [
+      "If customers provide their own lace, buttons, latkans, embellishments, lining, hooks, accessories, or other special materials, SILAIGO will use reasonable care when handling them.",
+      "SILAIGO will not be responsible for defects, incompatibility, insufficiency, poor quality, or unsuitability inherent in customer-provided materials, or for resulting issues caused by those characteristics.",
+    ],
+  },
+  {
+    id: 9,
+    title: "9. Design References and Inspiration Images",
+    content: [
+      "Customers may provide photographs, sketches, existing garments, screenshots, or other design references.",
+      "Reference images are treated as design guidance rather than a guarantee of identical reproduction.",
+      "SILAIGO will make reasonable efforts to achieve the requested look and design.",
+      "The final garment may differ depending on the fabric, existing embroidery or embellishment, measurements, construction method, available materials, proportions, and other characteristics of the customer’s order.",
+      "A design can generally be reproduced more closely where the fabric, existing work, construction and measurements are broadly similar to the reference.",
+      "Exact replication of another garment or design cannot always be guaranteed.",
+    ],
+  },
+  {
+    id: 10,
+    title: "10. Measurements and Fit",
+    content: [
+      "Customers are responsible for providing accurate information where measurements are supplied or confirmed by the customer.",
+      "If alteration or correction is required because measurements supplied or confirmed by the customer were incorrect, incomplete, or inaccurate, SILAIGO may provide alteration support and applicable alteration charges may apply.",
+      "If an issue is attributable to an error in measurement recording by SILAIGO or a stitching error attributable to SILAIGO, SILAIGO will provide reasonable alteration or rework without charging the customer for that correction.",
+      "This does not automatically create an entitlement to a remake or refund.",
+    ],
+  },
+  {
+    id: 11,
+    title: "11. Order Changes",
+    content: [
+      "Customers may request changes to an order before stitching begins.",
+      "SILAIGO will assess whether the requested change is reasonably feasible based on the current production stage.",
+      "If the change is feasible: additional charges may apply; the design, construction or materials may be revised; and the delivery timeline may change where necessary.",
+      "If a requested change is no longer reasonably feasible because production has progressed, SILAIGO may decline the change and continue with the original confirmed order.",
+    ],
+  },
+  {
+    id: 12,
+    title: "12. When an Order Is Considered Started",
+    content: [
+      "For cancellation purposes, an order is considered started when fulfilment activities have begun.",
+      "This may include, without limitation: purchasing or procuring lining or other order-specific materials; purchasing accessories or other materials specifically for the order; cutting; stitching; or other material production or fulfilment activity specifically undertaken for the customer’s order.",
+      "Once fulfilment has started, cancellation by the customer is generally not permitted.",
+    ],
+  },
+  {
+    id: 13,
+    title: "13. Cancellation After Order Confirmation",
+    content: [
+      "Once an order has been confirmed but fulfilment has not yet started, the customer may request cancellation subject to a ₹200 cancellation charge.",
+      "If fulfilment has already started, customer-requested cancellation is not permitted.",
+      "Where a cancelled order or its materials need to be returned to the customer, SILAIGO may arrange return through Porter or another suitable delivery service, or through another reasonable method depending on the circumstances.",
+      "The customer may be responsible for applicable return/delivery charges depending on the circumstances.",
+    ],
+  },
+  {
+    id: 14,
+    title: "14. 48-Hour Delivery Commitment",
+    content: [
+      "Where a 48-hour delivery commitment applies, the 48-hour period means 48 consecutive hours, not 48 working hours.",
+      "The delivery period begins once: the customer’s fabric/material has been successfully picked up; and the order has been confirmed as described in these Terms.",
+      "If SILAIGO is waiting for information, clarification, measurements, approval, material, or any other action reasonably required from the customer, the affected period may not count toward the delivery commitment.",
+      "The 48-hour commitment does not apply to orders or locations for which SILAIGO has specifically communicated that the commitment is unavailable.",
+    ],
+  },
+  {
+    id: 15,
+    title: "15. Service Outside Normal Service Areas",
+    content: [
+      "SILAIGO normally provides services within its available service areas.",
+      "Requests outside the normal service area may be accepted on a case-by-case basis.",
+      "Where an outside-area request is accepted, the customer may be informed of any applicable additional charges or service conditions.",
+      "The 48-hour delivery commitment does not apply to services accepted outside SILAIGO’s normal service area, unless SILAIGO specifically confirms otherwise.",
+    ],
+  },
+  {
+    id: 16,
+    title: "16. Delays Caused by SILAIGO",
+    content: [
+      "If SILAIGO fails to complete an applicable 48-hour commitment due solely to circumstances within SILAIGO’s control, SILAIGO will assess the situation and may provide an appropriate resolution depending on the circumstances.",
+      "No automatic discount, refund, or compensation is promised solely because a delivery exceeds the stated timeframe.",
+    ],
+  },
+  {
+    id: 17,
+    title: "17. Circumstances Outside SILAIGO’s Control",
+    content: [
+      "SILAIGO will not be responsible for delays or inability to perform caused by circumstances beyond its reasonable control, including natural disasters, extreme weather, government restrictions, strikes, riots, major transport disruption, utility failures, widespread technical failures, or other comparable events.",
+      "Where such circumstances affect an order, the relevant service or delivery timeline may be appropriately extended.",
+    ],
+  },
+  {
+    id: 18,
+    title: "18. Delivery and Customer Inspection",
+    content: [
+      "Customers are expected to try on and inspect the garment at the time of delivery, where reasonably practicable.",
+      "Any concern regarding fit, measurements, stitching, design execution, finishing, or other aspects of the garment should be raised with the delivery representative at that time.",
+      "Where appropriate, the customer may hand the garment back to the delivery representative for assessment or necessary correction.",
+      "Once the customer accepts the garment and completes the applicable payment, the order will ordinarily be treated as completed and accepted.",
+    ],
+  },
+  {
+    id: 19,
+    title: "19. Post-Delivery Alteration Requests",
+    content: [
+      "Any alteration or other service requested after completion and acceptance of an order will ordinarily be treated as a new service request.",
+      "Applicable alteration charges and a ₹200 pickup/collection charge may apply.",
+      "However, SILAIGO may, at its discretion, consider and resolve genuine concerns on a goodwill or case-by-case basis.",
+      "Nothing in this section limits any rights that cannot lawfully be excluded under applicable law.",
+    ],
+  },
+  {
+    id: 20,
+    title: "20. Delivery and Payment",
+    content: [
+      "Payment is due after the customer has inspected/accepted the completed garment and before the delivery representative leaves, unless another arrangement has been expressly confirmed.",
+      "Online payment is preferred, although cash may also be accepted where available.",
+      "Applicable payment gateway or convenience charges, where relevant, will be included in the applicable final price rather than being added separately as an undisclosed charge.",
+      "If a customer raises a concern during delivery and SILAIGO determines that further assessment is appropriate, SILAIGO may take the garment back for assessment or correction.",
+      "If the garment has otherwise been completed in accordance with the confirmed order, refusal to accept or pay does not by itself cancel the order or create an automatic refund entitlement.",
+      "SILAIGO may retain a completed garment until applicable payment obligations are settled, subject to applicable law.",
+    ],
+  },
+  {
+    id: 21,
+    title: "21. Failed or Unsuccessful Delivery",
+    content: [
+      "If a customer is unavailable, unreachable, or otherwise unable to accept delivery, SILAIGO may determine the appropriate next step based on the circumstances.",
+      "Any repeat delivery, collection, transportation, or related charges will be determined case-by-case and communicated where applicable.",
+    ],
+  },
+  {
+    id: 22,
+    title: "22. Customer Fabric Lost or Materially Damaged in SILAIGO’s Custody",
+    content: [
+      "SILAIGO takes reasonable care when handling customer-provided materials.",
+      "If customer-provided fabric or material is lost or materially damaged while in SILAIGO’s custody, SILAIGO will assess the circumstances and may provide reasonable compensation based on the verified value of the affected material, subject to reasonable supporting evidence and applicable law.",
+    ],
+  },
+  {
+    id: 23,
+    title: "23. If SILAIGO Cannot Fulfil an Order",
+    content: [
+      "If SILAIGO determines that an order cannot reasonably be completed due to material limitations, availability issues, technical limitations, or other circumstances affecting fulfilment, SILAIGO will inform the customer where reasonably practicable.",
+      "The customer’s original fabric/material will ordinarily be returned.",
+      "Any tailoring charges or other amounts paid, if applicable, will be resolved appropriately based on the circumstances.",
+      "The final resolution may be determined case-by-case, subject to applicable law.",
+    ],
+  },
+  {
+    id: 24,
+    title: "24. Storage of Uncollected Items",
+    content: [
+      "If a completed garment or customer-provided material remains uncollected, undelivered, or unresolved due to customer non-acceptance, non-payment, or similar circumstances, SILAIGO may retain the item for up to 60 days.",
+      "SILAIGO will make reasonable efforts to notify the customer before disposal.",
+      "After the applicable 60-day period, if the customer has not collected the item or resolved the outstanding matter, SILAIGO may dispose of the item, subject to applicable law.",
+    ],
+  },
+  {
+    id: 25,
+    title: "25. Promotions, Coupons and Referral Offers",
+    content: [
+      "Promotional offers, coupons, discounts and referral benefits are subject to their stated terms and validity.",
+      "Unless expressly stated otherwise: promotional offers cannot be combined; each offer may have its own eligibility requirements; SILAIGO may modify, suspend or withdraw an offer; promotional discounts are not exchangeable for cash; and a discount or promotional benefit does not create a cash refund entitlement.",
+    ],
+  },
+  {
+    id: 26,
+    title: "26. Website and Account Use",
+    content: [
+      "Customers are responsible for keeping their account credentials secure.",
+      "Activity performed through a customer’s account may be treated as activity authorised by that customer unless the customer has notified SILAIGO of unauthorised access.",
+      "SILAIGO may suspend or terminate an account where there is reasonable suspicion of fraud, misuse, unauthorised activity, abuse, violation of these Terms, or other conduct that may adversely affect SILAIGO or its customers.",
+    ],
+  },
+  {
+    id: 27,
+    title: "27. Website Availability",
+    content: [
+      "SILAIGO does not guarantee that its website, online booking system, account services, or other digital services will always be continuously available or error-free.",
+      "Temporary unavailability may occur because of maintenance, technical problems, network issues, hosting problems, third-party services, security incidents, or other circumstances.",
+    ],
+  },
+  {
+    id: 28,
+    title: "28. Intellectual Property",
+    content: [
+      "All intellectual property relating to the SILAIGO website and platform, including its branding, logo, text, graphics, software, website design, proprietary processes, and other original content, belongs to or is lawfully used by SILAIGO.",
+      "Customers may use the website and services for their intended personal purposes.",
+      "Customers may not copy, reproduce, modify, distribute, commercially exploit, reverse engineer, or otherwise misuse SILAIGO’s proprietary website or brand content without appropriate permission.",
+    ],
+  },
+  {
+    id: 29,
+    title: "29. Customer Information and Order Materials",
+    content: [
+      "SILAIGO may use information, photographs, measurements, garment images, order information and other materials provided in connection with an order for purposes connected with providing, documenting, improving, promoting, or operating SILAIGO’s services, subject to applicable law and SILAIGO’s Privacy Policy.",
+      "SILAIGO will handle personal information in accordance with its Privacy Policy and applicable law.",
+    ],
+  },
+  {
+    id: 30,
+    title: "30. Right to Refuse or Suspend Service",
+    content: [
+      "SILAIGO may refuse, suspend, cancel, or discontinue a service or order where reasonably necessary, including circumstances involving: abusive or threatening behaviour; suspected fraud or misuse; repeated non-payment; unsafe working or pickup/delivery conditions; unlawful requests; inability to reasonably fulfil the requested service; misuse of SILAIGO’s systems or services; or other circumstances where continuing the service would be unreasonable or impracticable.",
+      "Where appropriate, SILAIGO will communicate the reason or next steps to the customer.",
+    ],
+  },
+  {
+    id: 31,
+    title: "31. Limitation of Liability",
+    content: [
+      "SILAIGO will take reasonable care in providing its services.",
+      "To the extent permitted by applicable law, SILAIGO will not be responsible for indirect, incidental, special, consequential, or purely economic losses arising from the use of its services where such losses were not reasonably foreseeable.",
+      "This limitation does not exclude or restrict liability that cannot legally be excluded or restricted, including liability arising from proven negligence, wilful misconduct, or other circumstances where limitation is prohibited by law.",
+      "Nothing in these Terms is intended to remove or restrict mandatory rights available to consumers under applicable law.",
+    ],
+  },
+  {
+    id: 32,
+    title: "32. Privacy",
+    content: [
+      "Use of personal information is governed by SILAIGO’s Privacy Policy.",
+      "The Privacy Policy explains how SILAIGO may collect, use, store, and process information required to provide its services and operate its website.",
+    ],
+  },
+  {
+    id: 33,
+    title: "33. Governing Law and Dispute Resolution",
+    content: [
+      "These Terms are governed by the laws of India.",
+      "If a customer has a concern or dispute, the customer is encouraged to first contact SILAIGO so that the matter can be reviewed and, where possible, resolved directly.",
+      "Nothing in this section prevents a customer from exercising any legal or consumer rights available under applicable law.",
+      "Subject to applicable law, courts in Noida, Uttar Pradesh shall have jurisdiction over disputes arising from these Terms or SILAIGO’s services.",
+    ],
+  },
+  {
+    id: 34,
+    title: "34. Changes to These Terms",
+    content: [
+      "SILAIGO may update these Terms from time to time.",
+      "The updated version will be published on the SILAIGO website.",
+      "The revised Terms will generally apply to future orders and service transactions made after the updated Terms are published.",
+      "The Terms applicable to an existing order will ordinarily be those in effect when that order was confirmed, unless a change is required by law.",
+    ],
+  },
+  {
+    id: 35,
+    title: "35. Severability",
+    content: [
+      "If any provision of these Terms is found to be invalid or unenforceable, the remaining provisions will continue to apply to the extent permitted by law.",
+    ],
+  },
+  {
+    id: 36,
+    title: "36. Contact and Grievances",
+    content: [
+      "For questions, complaints, order-related concerns, or other matters relating to these Terms, customers may contact SILAIGO:",
+      "Email: Silaigo.official@gmail.com",
+      "Phone: +91 88006-33755",
+      "SILAIGO will make reasonable efforts to review and respond to customer concerns.",
+    ],
+  },
+];
+
 export default function TermsAndConditionPage() {
   return (
-    <div className="mx-auto px-4 sm:px-8 md:px-16 lg:px-32 py-8 md:py-12 text-gray-700 leading-relaxed max-w-8xl">
+    <div className="mx-auto px-4 sm:px-8 md:px-16 lg:px-32 py-8 md:py-12 text-gray-700 leading-relaxed max-w-6xl">
       <MetaTagsProvider
-        title="Terms and Conditions | SilaiGo"
-        description="Terms and Conditions for SilaiGo. Learn about our policies and guidelines for using our services."
+        title="Terms & Conditions | SILAIGO"
+        description="SILAIGO Terms & Conditions. Learn about our policies, guidelines, order confirmation, pickup, and tailoring services."
       />
-      <h1 className="text-xl sm:text-2xl font-bold text-center text-gray-900 mb-8 md:mb-10">
-        Terms and Conditions
-      </h1>
-      <div className="space-y-8 text-gray-700 text-xs sm:text-sm leading-relaxed">
-        <div className="space-y-8">
-          <div>
-            {" "}
-            <h2 className="text-base sm:text-lg font-semibold mb-2">
-              1. Acceptance of Terms
-            </h2>
-            <p className="text-xs sm:text-sm text-gray-700">
-              By accessing or using our services, you agree to comply with and
-              be legally bound by these terms. Please ensure that you:
-            </p>
-            <ol className="list-decimal list-inside mt-2 text-xs sm:text-sm space-y-2">
-              <li>
-                <strong>
-                  Read the Terms and Conditions in full before placing an order:
-                </strong>{" "}
-                It is your responsibility to thoroughly review all the terms and
-                conditions outlined on this page before initiating any
-                transaction or placing an order with us. This ensures you are
-                fully aware of your rights, obligations, and the scope of our
-                services.
-              </li>
-              <li>
-                <strong>
-                  Do not access the service if you disagree with any part of the
-                  Terms:
-                </strong>{" "}
-                If you do not agree with any clause or policy mentioned herein,
-                you must refrain from using our website, mobile application, or
-                any related services. Accessing or using our services without
-                agreement constitutes a breach of these terms.
-              </li>
-              <li>
-                <strong>
-                  Understand that continued use implies acceptance of updates:
-                </strong>{" "}
-                We may update or modify these terms periodically. Continued use
-                of our services after such updates will be considered as your
-                acceptance of the revised terms. We recommend reviewing this
-                page regularly to stay informed.
-              </li>
-            </ol>
-          </div>
+      <div className="text-center mb-10">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+          SILAIGO Terms & Conditions
+        </h1>
+        <p className="text-xs sm:text-sm text-gray-500 font-medium">
+          Effective Date: 8 September 2026
+        </p>
+      </div>
 
-          <div>
-            {" "}
-            <h2 className="text-base sm:text-lg font-semibold mb-2">
-              2. Service Overview
-            </h2>
-            <ol className="list-decimal list-inside text-xs sm:text-sm space-y-2">
-              <li>
-                <strong>Doorstep fabric pickup:</strong> We offer a convenient
-                pickup service where our agents collect your fabric directly
-                from your specified address at a scheduled time, eliminating the
-                need for you to visit our premises.
-              </li>
-              <li>
-                <strong>
-                  Garment customization through online selections:
-                </strong>{" "}
-                You can customize your garment by selecting styles, patterns,
-                and measurements through our online platform, ensuring a
-                personalized tailoring experience.
-              </li>
-              <li>
-                <strong>Stitching and delivery within 48 working hours:</strong>{" "}
-                Once your fabric is picked up and your order is confirmed, we
-                commit to completing the stitching and delivering the finished
-                garment to your doorstep within 48 working hours, subject to
-                certain conditions.
-              </li>
-              <li>
-                <strong>Alteration support if required:</strong> If the
-                delivered garment does not fit as expected, we provide
-                alteration services to ensure your satisfaction, as per our
-                alteration policy.
-              </li>
-            </ol>
-          </div>
+      <div className="bg-primary/5 rounded-xl p-4 sm:p-6 mb-8 text-xs sm:text-sm text-gray-700 leading-relaxed border border-primary/20">
+        <p className="mb-2">
+          These Terms & Conditions govern the use of SILAIGO’s website, tailoring services, pickup and delivery services, consultations, and related services.
+        </p>
+        <p className="font-medium text-gray-900">
+          By booking a pickup, placing an order, using our website, or otherwise using SILAIGO’s services, you agree to these Terms & Conditions.
+        </p>
+      </div>
 
-          <div>
-            {" "}
-            <h2 className="text-base sm:text-lg font-semibold mb-2">
-              3. 48-Hour Delivery Commitment
+      <div className="space-y-8">
+        {termsSections.map((section) => (
+          <div key={section.id} className="border-b border-gray-100 pb-6">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3">
+              {section.title}
             </h2>
-            <ol className="list-decimal list-inside text-xs sm:text-sm space-y-2">
-              <li>
-                <strong>Countdown starts post successful fabric pickup:</strong>{" "}
-                The 48-hour delivery window begins only after your fabric has
-                been successfully collected by our agent and all order details
-                are confirmed.
-              </li>
-              <li>
-                <strong>
-                  Subject to availability and volume; delays will be
-                  communicated:
-                </strong>{" "}
-                While we strive to meet the 48-hour commitment, high order
-                volumes or unforeseen circumstances may cause delays. In such
-                cases, we will proactively inform you about the revised
-                timelines.
-              </li>
-              <li>
-                <strong>
-                  Public holidays and local restrictions may impact timelines:
-                </strong>{" "}
-                National holidays, local events, or government-imposed
-                restrictions may affect our ability to deliver within the
-                promised timeframe. We will notify you if such situations arise.
-              </li>
-            </ol>
+            <div className="space-y-2">
+              {section.content.map((paragraph, index) => (
+                <p key={index} className="text-xs sm:text-sm text-gray-700 leading-relaxed">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
           </div>
+        ))}
+      </div>
 
-          <div>
-            {" "}
-            <h2 className="text-base sm:text-lg font-semibold mb-2">
-              4. Fabric Pickup & Delivery
-            </h2>
-            <ol className="list-decimal list-inside text-xs sm:text-sm space-y-2">
-              <li>
-                <strong>Pickup occurs at the scheduled time slot:</strong> Our
-                team will arrive at your address during the time slot you select
-                while placing the order. Please ensure someone is available to
-                hand over the fabric.
-              </li>
-              <li>
-                <strong>Orders cannot be canceled after dispatch:</strong> Once
-                your order has been dispatched for pickup, cancellation is not
-                permitted. Please review your order carefully before confirming.
-              </li>
-              <li>
-                <strong>
-                  Delivery is to the same address unless changed in advance:
-                </strong>{" "}
-                The finished garment will be delivered to the pickup address
-                unless you notify us of a change before the delivery process
-                begins.
-              </li>
-              <li>
-                <strong>
-                  Ensure availability at pickup and delivery times:
-                </strong>{" "}
-                It is your responsibility to be present or arrange for someone
-                to be available at the specified address during both pickup and
-                delivery to avoid delays or missed appointments.
-              </li>
-            </ol>
-          </div>
-
-          <div>
-            {" "}
-            <h2 className="text-base sm:text-lg font-semibold mb-2">
-              5. Alteration & Fit Guarantee
-            </h2>
-            <ol className="list-decimal list-inside text-xs sm:text-sm space-y-2">
-              <li>
-                <strong>
-                  Immediate collection for alteration if fit is incorrect at
-                  delivery:
-                </strong>{" "}
-                If you find the fit unsatisfactory at the time of delivery, our
-                agent can collect the garment immediately for necessary
-                alterations.
-              </li>
-              <li>
-                <strong>Requests allowed within 2 days post-delivery:</strong>{" "}
-                You may request alterations within 2 days of receiving your
-                garment. Requests made after this period may not be eligible for
-                free alteration.
-              </li>
-              <li>
-                <strong>Alterations must match original specifications:</strong>{" "}
-                Alteration requests should pertain only to the original
-                measurements and design provided at the time of order. Any
-                deviation may incur additional charges.
-              </li>
-              <li>
-                <strong>
-                  Design changes are not eligible for free alteration:
-                </strong>{" "}
-                Requests to change the style, pattern, or design after delivery
-                are not covered under the free alteration policy and will be
-                treated as new orders.
-              </li>
-            </ol>
-          </div>
-
-          <div>
-            {" "}
-            <h2 className="text-base sm:text-lg font-semibold mb-2">
-              6. Refunds for Damage
-            </h2>
-            <ol className="list-decimal list-inside text-xs sm:text-sm space-y-2">
-              <li>
-                <strong>
-                  Provide photographic/video proof within 24 hours of delivery:
-                </strong>{" "}
-                If your fabric or garment is damaged, you must submit clear
-                photographic or video evidence within 24 hours of receiving the
-                delivery to initiate a refund claim.
-              </li>
-              <li>
-                <strong>
-                  Refund based on verified fabric value and receipt:
-                </strong>{" "}
-                Refunds will be processed based on the actual value of the
-                fabric, as verified by your purchase receipt or other valid
-                proof of value.
-              </li>
-              <li>
-                <strong>SILAIGO reserves final discretion over refunds:</strong>{" "}
-                All refund decisions are at the sole discretion of SILAIGO,
-                based on the evidence provided and internal investigation.
-              </li>
-              <li>
-                <strong>Fraudulent claims will be rejected:</strong> Any attempt
-                to submit false or misleading claims will result in immediate
-                rejection and may lead to suspension of services.
-              </li>
-            </ol>
-          </div>
-
-          <div>
-            {" "}
-            <h2 className="text-base sm:text-lg font-semibold mb-2">
-              7. Order Cancellation & Refunds
-            </h2>
-            <ol className="list-decimal list-inside text-xs sm:text-sm space-y-2">
-              <li>
-                <strong>Orders can be cancelled before pickup dispatch:</strong>{" "}
-                You may cancel your order without penalty as long as the pickup
-                agent has not been dispatched. Please contact us promptly for
-                cancellations.
-              </li>
-              <li>
-                <strong>No cancellation once agent is dispatched:</strong> Once
-                the pickup process has begun, cancellations are not permitted,
-                and you will be liable for the full order amount.
-              </li>
-              <li>
-                <strong>
-                  Full refund if SILAIGO is unable to fulfill the order:
-                </strong>{" "}
-                In the rare event that we are unable to process your order due
-                to unforeseen circumstances, you will receive a full refund of
-                any payments made.
-              </li>
-            </ol>
-          </div>
-
-          <div>
-            <h2 className="text-base sm:text-lg font-semibold mb-2">
-              8. Payment Terms
-            </h2>
-            <ol className="list-decimal list-inside text-xs sm:text-sm space-y-2">
-              <li>
-                <strong>
-                  Accepted methods: UPI, cards, cash (in some cases):
-                </strong>{" "}
-                We accept payments through UPI, credit/debit cards, and cash
-                (where applicable). Please confirm available payment options at
-                the time of order.
-              </li>
-              <li>
-                <strong>
-                  Base price includes stitching, pickup, delivery:
-                </strong>{" "}
-                The quoted price covers the cost of stitching, fabric pickup,
-                and delivery. There are no hidden charges for these core
-                services.
-              </li>
-              <li>
-                <strong>
-                  Add-ons (lining, designer details) are charged separately:
-                </strong>{" "}
-                Any additional features such as lining, designer embellishments,
-                or special requests will incur extra charges, which will be
-                communicated to you before order confirmation.
-              </li>
-            </ol>
-          </div>
-
-          <div>
-            <h2 className="text-base sm:text-lg font-semibold mb-2">
-              9. Intellectual Property
-            </h2>
-            <p className="text-xs sm:text-sm ">
-              All designs, patterns, proprietary tools (such as SILAIGO DYNAMO
-              and SILAIGO CAD), and user interface elements provided by SILAIGO
-              are protected by intellectual property laws. Unauthorized use,
-              reproduction, or distribution of these assets is strictly
-              prohibited and may result in legal action.
-            </p>
-          </div>
-
-          <div>
-            <h2 className="text-base sm:text-lg font-semibold mb-2">
-              10. Service Limitations
-            </h2>
-            <ol className="list-decimal list-inside text-xs sm:text-sm space-y-2">
-              <li>
-                <strong>
-                  Currently serving: Noida, Indirapuram, Mayur Vihar,
-                  Vasundhara, Gaur City:
-                </strong>{" "}
-                Our services are currently limited to these locations. Orders
-                from outside these areas may not be accepted.
-              </li>
-              <li>
-                <strong>
-                  Exact designer replicas are not guaranteed unless agreed upon:
-                </strong>{" "}
-                While we strive to match your design preferences, we do not
-                guarantee exact replicas of designer garments unless explicitly
-                agreed in writing.
-              </li>
-              <li>
-                <strong>
-                  SILAIGO is not liable for stitching issues with pre-damaged
-                  fabric:
-                </strong>{" "}
-                If the fabric provided is already damaged or defective, SILAIGO
-                cannot be held responsible for any resulting issues in the
-                finished garment.
-              </li>
-            </ol>
-          </div>
-
-          <div>
-            <h2 className="text-base sm:text-lg font-semibold mb-2">
-              11. Dispute Resolution
-            </h2>
-            <ol className="list-decimal list-inside text-xs sm:text-sm space-y-2">
-              <li>
-                <strong>Contact:</strong> For any disputes, concerns, or
-                grievances, please reach out to us via email at{" "}
-                <strong>support@silaigo.com </strong> or phone at{" "}
-                <strong> +91 88006-33755</strong>. We are committed to resolving
-                your issues promptly.
-              </li>
-              <li>
-                <strong>Resolution attempted within 7 working days:</strong> We
-                aim to address and resolve all disputes within 7 working days
-                from the date of receipt of your complaint.
-              </li>
-              <li>
-                <strong>
-                  Disputes governed by Indian Law, under Noida jurisdiction:
-                </strong>{" "}
-                All disputes arising from these terms or our services will be
-                governed by the laws of India and subject to the exclusive
-                jurisdiction of courts in Noida.
-              </li>
-            </ol>
-          </div>
-
-          <div>
-            <h2 className="text-base sm:text-lg font-semibold mb-2">
-              12. Contact Us
-            </h2>
-            <ul className="list-disc list-inside text-xs sm:text-sm space-y-2">
-              <li>
-                <strong>📞 Phone:</strong> +91 88006-33755
-              </li>
-              <li>
-                <strong>✉️ Email:</strong> support@silaigo.com
-              </li>
-              <li>
-                <strong>📍 Address:</strong> Shop No. 5, Lane 7, Shiva Towers Sector 66, Noida, India
-              </li>
-            </ul>
-          </div>
-        </div>
+      <div className="mt-12 pt-8 border-t border-gray-200 text-center text-xs sm:text-sm text-gray-600 space-y-1">
+        <p className="font-semibold text-gray-900 text-base">SILAIGO</p>
+        <p className="text-gray-600">Personalized tailoring with doorstep convenience.</p>
+        <p className="text-gray-400 text-xs mt-2">Effective Date: 8 September 2026</p>
       </div>
     </div>
   );

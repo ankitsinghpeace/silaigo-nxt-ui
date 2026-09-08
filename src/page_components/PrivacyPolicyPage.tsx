@@ -1,264 +1,289 @@
 "use client";
+
 import { MetaTagsProvider } from "@/components/MetaTagsProvider";
 import React from "react";
 
-const PrivacyPolicyPage = () => {
+const privacySections = [
+  {
+    id: 1,
+    title: "1. Information We May Collect",
+    subsections: [
+      {
+        subtitle: "Personal and Contact Information",
+        bullets: [
+          "Name",
+          "Mobile number",
+          "Email address",
+          "Delivery and pickup address",
+          "Other contact details provided by you",
+        ],
+      },
+      {
+        subtitle: "Tailoring and Order Information",
+        intro: "To provide customised tailoring services, we may collect information such as:",
+        bullets: [
+          "Body measurements",
+          "Garment measurements",
+          "Size and fitting preferences",
+          "Garment and design requirements",
+          "Fabric and material details",
+          "Photographs or reference images provided by you",
+          "Order history",
+          "Alteration requirements",
+          "Other information necessary to fulfil your order",
+        ],
+      },
+      {
+        subtitle: "Payment Information",
+        text: "When you make a payment, relevant payment information may be processed through our payment service providers. Where payment processing is handled by a third-party payment gateway, SILAIGO does not ordinarily need to store your complete card or banking credentials.",
+      },
+      {
+        subtitle: "Website and Technical Information",
+        intro: "When you use our website, certain technical information may be collected automatically, such as:",
+        bullets: [
+          "IP address",
+          "Browser and device information",
+          "Operating system",
+          "Approximate location information",
+          "Pages visited and referring pages",
+          "Interaction and usage information",
+          "Cookies and similar technologies",
+          "Technical logs necessary for security and operation",
+        ],
+      },
+    ],
+  },
+  {
+    id: 2,
+    title: "2. How We Use Your Information",
+    intro: "SILAIGO may use personal information for purposes including:",
+    bullets: [
+      "Creating and managing orders",
+      "Arranging pickup and delivery",
+      "Understanding measurements and tailoring requirements",
+      "Communicating regarding an order",
+      "Providing customer support",
+      "Processing payments",
+      "Handling alterations and complaints",
+      "Providing invoices, order summaries and service updates",
+      "Improving our products, services and website",
+      "Maintaining security and preventing fraud or misuse",
+      "Maintaining business and operational records",
+      "Analysing website and service performance",
+      "Complying with applicable legal obligations",
+    ],
+  },
+  {
+    id: 3,
+    title: "3. Order-Related Communications",
+    text: "SILAIGO may use the contact information provided by a customer to communicate about an order or requested service. These communications may include information relating to pickup scheduling, order confirmation, order details, pricing, invoices and payment, production status, dispatch, delivery, alterations, and other information necessary to provide the requested service.",
+  },
+  {
+    id: 4,
+    title: "4. Marketing Communications",
+    text: "SILAIGO may use personal information for promotional or marketing communications where permitted by applicable law and based on the applicable consent or legal basis. Customers may request to stop receiving promotional communications. Stopping promotional communications will not normally affect essential communications required to fulfil an existing order or provide requested services.",
+  },
+  {
+    id: 5,
+    title: "5. Sharing of Information",
+    intro: "SILAIGO may share relevant information with service providers or other parties where reasonably necessary to operate the business and provide requested services. Depending on the service, these parties may include:",
+    bullets: [
+      "Pickup and delivery partners",
+      "Tailoring and production personnel",
+      "Payment gateways and payment service providers",
+      "Website hosting and infrastructure providers",
+      "Analytics and technology providers",
+      "Customer support or communication providers",
+      "Professional advisers",
+      "Government, regulatory, law-enforcement, or other authorities where required or permitted by law",
+    ],
+    outro: "SILAIGO aims to share only information reasonably necessary for the relevant purpose.",
+  },
+  {
+    id: 6,
+    title: "6. Customer Measurements and Tailoring Information",
+    text: "Because SILAIGO provides customised tailoring, measurements and garment-related information may need to be accessed by relevant personnel involved in fulfilling an order. Such information is used for operational purposes such as cutting, stitching, quality checking, alteration, delivery, and customer support. Access to order information should be limited to what is reasonably required for the relevant task.",
+  },
+  {
+    id: 7,
+    title: "7. Photographs and Order Images",
+    text: "Customers may provide photographs, reference images, garment photographs, or other visual material in connection with an order. SILAIGO may use such material for purposes connected with providing and documenting the service. Where permitted, SILAIGO may also use suitable order-related photographs, garment images, customer-submitted content, or other visual material for business promotion, marketing, website content, social media, portfolio purposes, or demonstrating its work. SILAIGO will handle personal information in accordance with applicable law.",
+  },
+  {
+    id: 8,
+    title: "8. Cookies and Similar Technologies",
+    intro: "SILAIGO may use cookies, analytics tools, pixels, tags, and similar technologies to operate the website, remember preferences, understand website usage, measure performance, improve user experience, maintain security, and support relevant marketing or analytics activities where applicable.",
+    outro: "Users may be able to control certain cookies through browser or device settings. Disabling certain cookies may affect some website functionality.",
+  },
+  {
+    id: 9,
+    title: "9. Analytics and Advertising",
+    text: "SILAIGO may use analytics and advertising technologies to understand website traffic, campaign performance, customer behaviour, and service usage. Where third-party advertising or analytics providers are used, those providers may process certain technical or usage information according to their own policies and applicable requirements.",
+  },
+  {
+    id: 10,
+    title: "10. Data Security",
+    text: "SILAIGO takes reasonable measures designed to protect personal information against unauthorised access, misuse, alteration, disclosure, or loss. However, no internet transmission or electronic storage system can be guaranteed to be completely secure. Customers should also take reasonable precautions to protect their account credentials and devices.",
+  },
+  {
+    id: 11,
+    title: "11. Data Retention",
+    intro: "SILAIGO may retain personal information for as long as reasonably necessary for the purposes for which it was collected, including fulfilling and maintaining order records, customer support, accounting and financial records, handling disputes or complaints, security and fraud prevention, legal and regulatory obligations, and legitimate business purposes.",
+    outro: "When information is no longer reasonably required and there is no legal or operational reason to retain it, SILAIGO may delete, anonymise, or otherwise appropriately dispose of it. Specific retention periods may vary depending on the type and purpose of the information.",
+  },
+  {
+    id: 12,
+    title: "12. Your Choices and Rights",
+    intro: "Depending on applicable law and the stage of implementation of relevant legal provisions, individuals may have rights relating to their personal data, including rights to:",
+    bullets: [
+      "Obtain information about processing",
+      "Request access to personal information",
+      "Request correction of inaccurate information",
+      "Request deletion where applicable",
+      "Withdraw consent where processing is based on consent",
+      "Opt out of promotional communications",
+      "Raise a complaint regarding personal-data processing",
+    ],
+    outro: "Requests will be handled in accordance with applicable law and may be subject to reasonable verification requirements. Certain information may need to be retained where required by law or where necessary for legitimate business or legal purposes.",
+  },
+  {
+    id: 13,
+    title: "13. Withdrawal of Consent",
+    text: "Where processing is based on consent, a customer may withdraw consent using a reasonably accessible method provided by SILAIGO. Withdrawal of consent does not affect processing that was lawfully carried out before withdrawal. Withdrawal may also affect SILAIGO’s ability to provide certain services where the information is necessary to provide those services.",
+  },
+  {
+    id: 14,
+    title: "14. Third-Party Websites and Services",
+    text: "SILAIGO may use or link to third-party services, payment providers, social-media platforms, analytics providers, or other external websites. SILAIGO is not responsible for the privacy practices of third-party websites or services. Customers should review the privacy policies of the relevant third parties when using their services.",
+  },
+  {
+    id: 15,
+    title: "15. Children’s Information",
+    text: "SILAIGO’s services are intended for users who can lawfully enter into agreements and provide the information necessary for the requested service. Where applicable law requires parental or guardian involvement for processing a minor’s personal information, SILAIGO will follow the applicable requirements.",
+  },
+  {
+    id: 16,
+    title: "16. Changes to This Privacy Policy",
+    text: "SILAIGO may update this Privacy Policy from time to time. The updated version will be published on the SILAIGO website. Changes will generally apply from the date the revised Policy is published, subject to applicable law.",
+  },
+  {
+    id: 17,
+    title: "17. Contact and Privacy Requests",
+    text: "For questions, privacy concerns, requests relating to personal information, or complaints regarding this Privacy Policy:",
+    contact: [
+      "Email: Silaigo.official@gmail.com",
+      "Phone: +91 88006-33755",
+    ],
+    outro: "SILAIGO will make reasonable efforts to review and respond to privacy-related requests in accordance with applicable law.",
+  },
+];
+
+export default function PrivacyPolicyPage() {
   return (
-    <div className="mx-auto px-4 sm:px-8 md:px-16 lg:px-32 py-8 md:py-12 text-gray-700 leading-relaxed max-w-8xl">
+    <div className="mx-auto px-4 sm:px-8 md:px-16 lg:px-32 py-8 md:py-12 text-gray-700 leading-relaxed max-w-6xl">
       <MetaTagsProvider
-        title="Privacy Policy | SilaiGo"
-        description="Privacy Policy for SilaiGo. Learn how we collect, use, and protect your personal information."
+        title="Privacy Policy | SILAIGO"
+        description="SILAIGO Privacy Policy. Learn what information we collect, how it is used, shared, and your privacy choices."
       />
-      <h1 className="text-xl sm:text-2xl font-bold text-center text-gray-900 mb-8 md:mb-10">
-        Privacy Policy
-      </h1>
-      <p className="mb-4 text-xs sm:text-sm">
-        SILAIGO (“we”, “our”, or “us”) respects your privacy and is committed to
-        protecting your personal data. This Privacy Policy explains how we
-        collect, use, disclose, and safeguard your information when you visit
-        our website{" "}
-        <a href="https://silaigo.com" className="text-blue-600 underline">
-          https://silaigo.com
-        </a>{" "}
-        and use our tailoring services, including fabric pickup, doorstep
-        delivery, and online customization.
-      </p>
-      <p className="mb-6 text-xs sm:text-sm">
-        By using our website or services, you agree to the terms of this Privacy
-        Policy.
-      </p>
-
-      <h2 className="text-base sm:text-lg font-semibold mb-2">1. Information We Collect</h2>
-      <h3 className="text-sm sm:text-base font-medium mb-2">A. Personal Information</h3>
-      <ul className="list-disc ml-4 sm:ml-6 mb-4 text-xs sm:text-sm space-y-2">
-        <li>
-          <strong>Contact Information:</strong> We collect your name, email
-          address, phone number, and physical address to communicate with you
-          regarding your orders, provide updates, and deliver our services
-          efficiently.
-        </li>
-        <li>
-          <strong>Measurement Details:</strong> Your body measurements, either
-          provided by you online or collected during doorstep visits, are used
-          solely to ensure the accuracy and fit of your tailored garments.
-        </li>
-        <li>
-          <strong>Order Information:</strong> We keep records of your garment
-          preferences, customization options, and order history to personalize
-          your experience and streamline repeat orders.
-        </li>
-        <li>
-          <strong>Account Data:</strong> If you create an account, we store your
-          username, password (securely hashed), and account preferences to
-          facilitate secure access and a personalized experience.
-        </li>
-        <li>
-          <strong>Payment Information:</strong> Payment details such as UPI or
-          credit/debit card information are processed securely via trusted
-          third-party payment processors. We do not store your full payment
-          details on our servers.
-        </li>
-      </ul>
-      <h3 className="text-sm sm:text-base font-medium mb-2">
-        B. Automatically Collected Information
-      </h3>
-      <ul className="list-disc ml-4 sm:ml-6 mb-6 text-xs sm:text-sm space-y-2">
-        <li>
-          <strong>Device Information:</strong> We automatically collect
-          information about the device you use to access our website, such as
-          browser type, operating system, and IP address, to optimize site
-          performance and security.
-        </li>
-        <li>
-          <strong>Location:</strong> We may determine your approximate location
-          based on your IP address to provide region-specific services and
-          offers.
-        </li>
-        <li>
-          <strong>Log Data:</strong> We collect data on the pages you visit, the
-          time spent on each page, and your clickstream activity to analyze
-          usage patterns and improve our website.
-        </li>
-        <li>
-          <strong>Cookies and Usage Tracking Data:</strong> Cookies and similar
-          technologies help us remember your preferences, track your activity,
-          and enhance your browsing experience.
-        </li>
-      </ul>
-
-      <h2 className="text-base sm:text-lg font-semibold mb-2">
-        2. How We Use Your Information
-      </h2>
-      <ul className="list-disc ml-4 sm:ml-6 mb-6 text-xs sm:text-sm space-y-2">
-        <li>
-          <strong>Fulfilling tailoring orders and managing logistics:</strong>{" "}
-          Your information is used to process your tailoring requests,
-          coordinate fabric pickup, manage stitching, and arrange doorstep
-          delivery.
-        </li>
-        <li>
-          <strong>Customer service and order updates:</strong> We use your
-          contact details to provide support, answer queries, and keep you
-          informed about your order status.
-        </li>
-        <li>
-          <strong>Improving website UX and performance:</strong> Usage data
-          helps us identify areas for improvement, fix bugs, and enhance the
-          overall user experience.
-        </li>
-        <li>
-          <strong>Sending promotional offers and updates:</strong> With your
-          consent, we may send you emails or messages about new services,
-          discounts, or special offers.
-        </li>
-        <li>
-          <strong>Internal analytics and business development:</strong>{" "}
-          Aggregated data is analyzed to understand customer preferences,
-          improve our offerings, and guide business decisions.
-        </li>
-        <li>
-          <strong>Ensuring platform security and fraud prevention:</strong> We
-          monitor activity to detect and prevent unauthorized access, fraud, or
-          other security threats.
-        </li>
-      </ul>
-
-      <h2 className="text-base sm:text-lg font-semibold mb-2">
-        3. How We Share Your Information
-      </h2>
-      <p className="text-xs sm:text-sm ml-2 sm:ml-6 mb-2">
-        We do not sell your personal information. We may share data with:
-      </p>
-      <ul className="list-disc ml-4 sm:ml-6 mb-6 text-xs sm:text-sm space-y-2">
-        <li>
-          <strong>Delivery Partners:</strong> Your name, address, and contact
-          number may be shared with trusted delivery partners to facilitate
-          fabric collection and order delivery.
-        </li>
-        <li>
-          <strong>Tailoring Teams:</strong> Measurement details and garment
-          preferences are shared with our tailoring staff to fulfill your
-          customization requests accurately.
-        </li>
-        <li>
-          <strong>Payment Gateways:</strong> Payment information is securely
-          transmitted to third-party payment processors for transaction
-          completion. We do not retain your full payment details.
-        </li>
-        <li>
-          <strong>Marketing Tools:</strong> With your consent, your email may be
-          used with marketing platforms to send you updates and promotional
-          content.
-        </li>
-        <li>
-          <strong>Legal Authorities:</strong> We may disclose your information
-          if required by law, regulation, or to protect our rights and enforce
-          our policies.
-        </li>
-      </ul>
-
-      <h2 className="text-base sm:text-lg font-semibold mb-2">4. Data Retention</h2>
-      <p className="mb-6 ml-2 sm:ml-4 text-xs sm:text-sm">
-        We retain your personal information only as long for:
-      </p>
-      <ul className="list-disc ml-4 sm:ml-6 mb-6 text-xs sm:text-sm space-y-2">
-        <li>
-          <strong>Order fulfillment and service history:</strong> We retain your data to ensure accurate processing of current and future orders, maintain a record of your service history, and provide a seamless tailoring experience.
-        </li>
-        <li>
-          <strong>Legal and compliance obligations:</strong> Your information may be retained as required to comply with applicable laws, regulations, and to respond to lawful requests from authorities.
-        </li>
-        <li>
-          <strong>User support and troubleshooting:</strong> Retaining relevant data enables us to assist you with inquiries, resolve issues, and improve our customer support services.
-        </li>
-        <li>
-          <strong>Data deletion requests:</strong> You may request deletion of your personal data at any time (see Section 8 for details on exercising your rights).
-        </li>
-      </ul>
-
-      <h2 className="text-base sm:text-lg font-semibold mb-2">5. Cookies and Tracking</h2>
-      <p className="mb-6 ml-2 sm:ml-4 text-xs sm:text-sm">
-        Our website uses cookies and similar technologies to remember your
-        preferences, analyze site traffic, and personalize your experience. You
-        can manage or disable cookies through your browser settings, but some
-        features may not function properly if cookies are disabled.
-      </p>
-
-      <h2 className="text-base sm:text-lg font-semibold mb-2">6. Data Security</h2>
-      <p className="mb-6 ml-2 sm:ml-4 text-xs sm:text-sm">
-        We implement industry-standard security measures such as SSL encryption,
-        secure servers, and restricted access controls to protect your data.
-        While we strive to safeguard your information, no system can guarantee
-        absolute security.
-      </p>
-
-      <h2 className="text-base sm:text-lg font-semibold mb-2">7. Children’s Privacy</h2>
-      <p className="mb-6 ml-2 sm:ml-4 text-xs sm:text-sm">
-        Our services are not intended for children under 13. We do not knowingly
-        collect personal data from children. If we become aware of such data, we
-        will promptly delete it from our records.
-      </p>
-
-      <h2 className="text-base sm:text-lg font-semibold mb-2">8. Your Rights</h2>
-      <ul className="list-disc ml-4 sm:ml-6 mb-6 text-xs sm:text-sm space-y-2">
-        <li>
-          <strong>Access your personal data:</strong> You can request a copy of
-          the personal information we hold about you.
-        </li>
-        <li>
-          <strong>Correct inaccuracies:</strong> You may ask us to update or
-          correct any inaccurate or incomplete data.
-        </li>
-        <li>
-          <strong>Request deletion:</strong> You have the right to request
-          deletion of your personal data, subject to legal or contractual
-          obligations.
-        </li>
-        <li>
-          <strong>Withdraw consent for marketing:</strong> You can opt out of
-          receiving marketing communications at any time.
-        </li>
-        <li>
-          <strong>Request a copy of stored data:</strong> You may request an
-          export of your data in a commonly used format.
-        </li>
-      </ul>
-      <p className="mb-6 text-xs sm:text-sm">
-        To exercise your rights, please contact us at{" "}
-        <a
-          href="mailto:support@silaigo.com"
-          className="text-blue-600 underline"
-        >
-          support@silaigo.com
-        </a>
-        .
-      </p>
-
-      <h2 className="text-base sm:text-lg font-semibold mb-2">9. Changes to This Policy</h2>
-      <p className="mb-6 ml-2 sm:ml-4 text-xs sm:text-sm">
-        We may update this Privacy Policy from time to time to reflect changes
-        in our practices or legal requirements. Any changes will be posted on
-        this page with a revised effective date. We encourage you to review this
-        policy periodically.
-      </p>
-
-      <h2 className="text-base sm:text-lg font-semibold mb-2">10. Contact Us</h2>
-      <div className="ml-2 sm:ml-4 mb-6 text-xs sm:text-sm">
-        <p className="">SILAIGO Customer Support</p>
-        <p className="">
-          Email:{" "}
-          <a
-            href="mailto:support@silaigo.com"
-            className="text-blue-600 underline"
-          >
-            support@silaigo.com
-          </a>
+      <div className="text-center mb-10">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+          SILAIGO Privacy Policy
+        </h1>
+        <p className="text-xs sm:text-sm text-gray-500 font-medium">
+          Effective Date: 8 September 2026
         </p>
-        <p className="">Phone: +91 88006-33755</p>
-        <p>Address: Shop No. 5, Lane 7, Shiva Towers, Sector 66, Noida, India</p>
+      </div>
+
+      <div className="bg-primary/5 rounded-xl p-4 sm:p-6 mb-8 text-xs sm:text-sm text-gray-700 leading-relaxed border border-primary/20 space-y-2">
+        <p>
+          SILAIGO respects the privacy of its customers and users.
+        </p>
+        <p>
+          This Privacy Policy explains what information SILAIGO may collect, why it is collected, how it may be used, when it may be shared, and the choices available to customers.
+        </p>
+        <p className="font-medium text-gray-900">
+          SILAIGO aims to handle personal information responsibly and transparently and will process personal data in accordance with applicable law, including applicable requirements under India’s digital personal data protection framework as and when the relevant provisions apply.
+        </p>
+      </div>
+
+      <div className="space-y-8">
+        {privacySections.map((section) => (
+          <div key={section.id} className="border-b border-gray-100 pb-6">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3">
+              {section.title}
+            </h2>
+
+            {section.text && (
+              <p className="text-xs sm:text-sm text-gray-700 leading-relaxed mb-2">
+                {section.text}
+              </p>
+            )}
+
+            {section.intro && (
+              <p className="text-xs sm:text-sm text-gray-700 leading-relaxed mb-2">
+                {section.intro}
+              </p>
+            )}
+
+            {section.bullets && (
+              <ul className="list-disc list-inside text-xs sm:text-sm text-gray-700 space-y-1 mb-2 pl-2">
+                {section.bullets.map((bullet, idx) => (
+                  <li key={idx}>{bullet}</li>
+                ))}
+              </ul>
+            )}
+
+            {section.subsections && (
+              <div className="space-y-4 mt-3 pl-2">
+                {section.subsections.map((sub, sIdx) => (
+                  <div key={sIdx}>
+                    <h3 className="text-xs sm:text-sm font-semibold text-gray-800 mb-1">
+                      {sub.subtitle}
+                    </h3>
+                    {sub.text && (
+                      <p className="text-xs sm:text-sm text-gray-700 leading-relaxed mb-2">
+                        {sub.text}
+                      </p>
+                    )}
+                    {sub.intro && (
+                      <p className="text-xs sm:text-sm text-gray-700 leading-relaxed mb-1">
+                        {sub.intro}
+                      </p>
+                    )}
+                    {sub.bullets && (
+                      <ul className="list-disc list-inside text-xs sm:text-sm text-gray-700 space-y-1 pl-2">
+                        {sub.bullets.map((b, bIdx) => (
+                          <li key={bIdx}>{b}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {section.contact && (
+              <div className="bg-gray-50 rounded-lg p-3 my-2 text-xs sm:text-sm font-medium text-gray-800 space-y-1 border">
+                {section.contact.map((cLine, cIdx) => (
+                  <p key={cIdx}>{cLine}</p>
+                ))}
+              </div>
+            )}
+
+            {section.outro && (
+              <p className="text-xs sm:text-sm text-gray-700 leading-relaxed mt-2">
+                {section.outro}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-12 pt-8 border-t border-gray-200 text-center text-xs sm:text-sm text-gray-600 space-y-1">
+        <p className="font-semibold text-gray-900 text-base">SILAIGO</p>
+        <p className="text-gray-600">Personalized tailoring with doorstep convenience.</p>
+        <p className="text-gray-400 text-xs mt-2">Effective Date: 8 September 2026</p>
       </div>
     </div>
   );
-};
-
-export default PrivacyPolicyPage;
+}
