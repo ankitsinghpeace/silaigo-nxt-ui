@@ -401,7 +401,15 @@ export default function CategoryPage() {
   const checkout = async (data: any) => {
     try {
       setIsGeneratingInvoice(true);
-      localStorage.clear();
+      const rawPickupId =
+        (typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("pickupId") ||
+            localStorage.getItem("pickupId")
+          : null) ||
+        (router.query?.pickupId as string) ||
+        undefined;
+      const pickupId = rawPickupId || undefined;
+
       const {
         advance_collected = 0,
         extra_items = [],
@@ -410,6 +418,7 @@ export default function CategoryPage() {
       } = data;
 
       const payload = {
+        pickupId,
         orderProcessingState: "ORDER_PLACED",
         orderItems: selectedItems.map((item) => {
           const {
@@ -426,11 +435,13 @@ export default function CategoryPage() {
             imageUrls,
             items: remaining,
             notes,
+            pickupId,
             orderProcessingState: "ORDER_PLACED",
           };
         }),
         customerData: {
           ...customerData,
+          pickupId,
           date: formatDate(new Date(customerData.date)),
         },
       };
