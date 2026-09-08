@@ -121,6 +121,7 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
   const isPickupCoordinator = user?.role === UserRole.PICKUP_COORDINATOR;
   const isCuttingAgent = user?.role === UserRole.CUTTING;
   const isStitchingAgent = user?.role === UserRole.STITCHING;
+  const isSupport = user?.role === UserRole.SUPPORT || user?.role?.toUpperCase() === "SUPPORT";
 
   const filteredCuttingAgents = React.useMemo(() => {
     return Array.isArray(cuttingAgents) ? cuttingAgents : [];
@@ -425,9 +426,15 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                 {isPickupCoordinator ? (
                   <Select
                     value={
-                      currentProcessingState === OrderProcessingState.ORDER_FULFILLED
-                        ? OrderProcessingState.ORDER_FULFILLED
-                        : OrderProcessingState.ORDER_PLACED
+                      [
+                        OrderProcessingState.MATERIAL_PACKED,
+                        OrderProcessingState.READY_FOR_DISPATCH,
+                        OrderProcessingState.DELIVERED_AND_PAID,
+                        OrderProcessingState.ORDER_COMPLETE,
+                        OrderProcessingState.RETURNED,
+                      ].includes(currentProcessingState as OrderProcessingState)
+                        ? currentProcessingState
+                        : OrderProcessingState.MATERIAL_PACKED
                     }
                     onValueChange={(val) => handleProcessingStateChange(val)}
                   >
@@ -438,8 +445,11 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={OrderProcessingState.ORDER_PLACED}>Order Placed</SelectItem>
-                      <SelectItem value={OrderProcessingState.ORDER_FULFILLED}>Order Fulfilled</SelectItem>
+                      <SelectItem value={OrderProcessingState.MATERIAL_PACKED}>Packed / पैक</SelectItem>
+                      <SelectItem value={OrderProcessingState.READY_FOR_DISPATCH}>Out for Delivery</SelectItem>
+                      <SelectItem value={OrderProcessingState.DELIVERED_AND_PAID}>Delivered and Paid</SelectItem>
+                      <SelectItem value={OrderProcessingState.ORDER_COMPLETE}>Delivered</SelectItem>
+                      <SelectItem value={OrderProcessingState.RETURNED}>Returned for Alteration</SelectItem>
                     </SelectContent>
                   </Select>
                 ) : isCuttingAgent ? (
@@ -500,6 +510,35 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                ) : isSupport ? (
+                  <Select
+                    value={
+                      currentProcessingState === OrderProcessingState.MATERIAL_PACKED
+                        ? OrderProcessingState.MATERIAL_PACKED
+                        : currentProcessingState === OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED
+                          ? OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED
+                          : OrderProcessingState.STITCHING_END
+                    }
+                    onValueChange={(val) => handleProcessingStateChange(val)}
+                  >
+                    <SelectTrigger
+                      disabled={!canEdit && !isSupport}
+                      data-testid="order-processing-state-select"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={OrderProcessingState.STITCHING_END}>
+                        {STAGE_LABELS[OrderProcessingState.STITCHING_END]}
+                      </SelectItem>
+                      <SelectItem value={OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED}>
+                        {STAGE_LABELS[OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED]}
+                      </SelectItem>
+                      <SelectItem value={OrderProcessingState.MATERIAL_PACKED}>
+                        {STAGE_LABELS[OrderProcessingState.MATERIAL_PACKED]}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <Select
                     value={currentProcessingState || OrderProcessingState.ORDER_PLACED}
@@ -517,7 +556,7 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                 )}
               </div>
 
-              {!isPickupCoordinator && !isCuttingAgent && !isStitchingAgent && (
+              {!isPickupCoordinator && !isCuttingAgent && !isStitchingAgent && !isSupport && (
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-muted-foreground">Order Status</label>
                   <Select
@@ -536,7 +575,7 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                 </div>
               )}
 
-              {!isCuttingAgent && !isStitchingAgent && (
+              {!isCuttingAgent && !isStitchingAgent && !isSupport && (
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-muted-foreground">Cutting Agent</label>
                   <Select
@@ -564,7 +603,7 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                 </div>
               )}
 
-              {!isPickupCoordinator && !isStitchingAgent && (
+              {!isPickupCoordinator && !isStitchingAgent && !isSupport && (
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-muted-foreground">Stitching Agent</label>
                   <Select
@@ -589,7 +628,7 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                 </div>
               )}
 
-              {!isCuttingAgent && !isStitchingAgent && (
+              {!isCuttingAgent && !isStitchingAgent && !isSupport && (
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-muted-foreground">Pin to Top</label>
                   <div className="flex items-center gap-2 h-10">
@@ -611,7 +650,7 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
               )}
             </div>
 
-            {!isCuttingAgent && !isStitchingAgent && (
+            {!isCuttingAgent && !isStitchingAgent && !isSupport && (
               <div className="pt-2 border-t">
                 <label className="text-xs text-muted-foreground mb-2 block flex items-center gap-1">
                   <MessageSquareText className="w-3 h-3" /> Notify Customer (SMS)

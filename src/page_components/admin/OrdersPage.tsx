@@ -340,7 +340,7 @@ const OrdersPage = () => {
   const { user } = useAuth();
   const [orderToDelete, setOrderToDelete] = useState(null);
   const [isMeasurementModalOpen, setIsMeasurementModalOpen] = useState(false);
-  const [tab, setTab] = useState<"orders" | "pickups" | "queue">("orders");
+  const [tab, setTab] = useState<"orders" | "pickups" | "queue" | "delivery">("orders");
   const orderToEditMeasurement = useRef<string | null>(null);
   const [orderExistingMeasurementData, setOrderExistingMeasurementData] =
     useState({});
@@ -782,7 +782,8 @@ const OrdersPage = () => {
       orderId: string;
       nextState: string;
     }) => {
-      if (!canEdit && user?.role !== UserRole.CUTTING && user?.role !== UserRole.PICKUP_COORDINATOR && user?.role !== UserRole.ADMIN) {
+      const isSupportRole = user?.role === UserRole.SUPPORT || user?.role?.toUpperCase() === "SUPPORT";
+      if (!canEdit && user?.role !== UserRole.CUTTING && user?.role !== UserRole.PICKUP_COORDINATOR && user?.role !== UserRole.ADMIN && !isSupportRole) {
         return Promise.reject(
           new Error("You don't have permission to update order status"),
         );
@@ -910,7 +911,7 @@ const OrdersPage = () => {
       retry: false,
     });
 
-  const handleTabChange = (tab: "orders" | "pickups" | "queue") => {
+  const handleTabChange = (tab: "orders" | "pickups" | "queue" | "delivery") => {
     if (tab === "orders") {
       const newQuery = { ...router.query };
       delete newQuery.all_orders;
@@ -1087,10 +1088,9 @@ const OrdersPage = () => {
       queryFn: () => {
         return getTeamMembersViaRole(UserRole.STITCHING);
       },
-      retry: 2,
-      retryDelay: 1000,
-      staleTime: 0,
-      gcTime: 1000 * 60 * 5,
+      enabled: user?.role === UserRole.ADMIN || user?.role === UserRole.CUTTING || user?.role === UserRole.STITCHING,
+      retry: false,
+      staleTime: 1000 * 60 * 5,
     },
   );
 
@@ -1106,21 +1106,23 @@ const OrdersPage = () => {
         if (Array.isArray(list)) allFetched.push(...list);
       } catch (e) {}
 
-      try {
-        const [allMembersRes, rolesRes] = await Promise.allSettled([
-          getTeamMembers(),
-          getRoles(),
-        ]);
+      if (user?.role === UserRole.ADMIN) {
+        try {
+          const [allMembersRes, rolesRes] = await Promise.allSettled([
+            getTeamMembers(),
+            getRoles(),
+          ]);
 
-        const allMembers =
-          allMembersRes.status === "fulfilled"
-            ? Array.isArray(allMembersRes.value)
-              ? allMembersRes.value
-              : allMembersRes.value?.data || allMembersRes.value?.users || allMembersRes.value?.teamMembers || []
-            : [];
+          const allMembers =
+            allMembersRes.status === "fulfilled"
+              ? Array.isArray(allMembersRes.value)
+                ? allMembersRes.value
+                : allMembersRes.value?.data || allMembersRes.value?.users || allMembersRes.value?.teamMembers || []
+              : [];
 
-        if (Array.isArray(allMembers)) allFetched.push(...allMembers);
-      } catch (e) {}
+          if (Array.isArray(allMembers)) allFetched.push(...allMembers);
+        } catch (e) {}
+      }
 
       const map = new Map<string, any>();
       for (const m of allFetched) {
@@ -1155,10 +1157,9 @@ const OrdersPage = () => {
 
       return filtered.length > 0 ? filtered : merged;
     },
-    retry: 2,
-    retryDelay: 1000,
-    staleTime: 0,
-    gcTime: 1000 * 60 * 5,
+    enabled: user?.role === UserRole.ADMIN || user?.role === UserRole.CUTTING || user?.role === UserRole.STITCHING,
+    retry: false,
+    staleTime: 1000 * 60 * 5,
   });
 
   // assign stitching agent
@@ -1735,6 +1736,16 @@ const OrdersPage = () => {
                   className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
                 >
                   Pickups
+                </TabsTrigger>
+              )}
+            {(user?.role === UserRole.ADMIN ||
+              user?.role === UserRole.PICKUP_COORDINATOR) && (
+                <TabsTrigger
+                  value="delivery"
+                  className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
+                  data-testid="tab-trigger-delivery"
+                >
+                  Delivery
                 </TabsTrigger>
               )}
             {(user?.role === UserRole.ADMIN ||
@@ -2608,6 +2619,18 @@ const OrdersPage = () => {
             user.role === UserRole.PICKUP_COORDINATOR) && (
               <TabsContent value="pickups">
                 <PickupsPage />
+              </TabsContent>
+            )}
+
+          {(user.role === UserRole.ADMIN ||
+            user.role === UserRole.PICKUP_COORDINATOR) && (
+              <TabsContent value="delivery">
+                <RoleQueueView
+                  role="DELIVERY"
+                  onOpenOrder={openOrderModal}
+                  canEdit={canEdit}
+                  cuttingAgents={cuttingAgents}
+                />
               </TabsContent>
             )}
 

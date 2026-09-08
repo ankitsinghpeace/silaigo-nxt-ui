@@ -26,6 +26,7 @@ import { generateErrorMessage } from "@/lib/helpers";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/services/auth.api";
+import { OrderProcessingState } from "@/types/enums";
 import {
   getAssignedCuttingAgentMap,
   setAssignedCuttingAgent,
@@ -33,7 +34,7 @@ import {
 } from "@/lib/cuttingAgentStore";
 
 interface RoleQueueViewProps {
-  role: "CUTTING" | "STITCHING";
+  role: "CUTTING" | "STITCHING" | "DELIVERY";
   onOpenOrder: (orderId: string) => void;
   canEdit: boolean;
   cuttingAgents?: any[];
@@ -137,7 +138,16 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({
     let filtered = orders.filter(
       (o: any) =>
         o.orderProcessingState === queueStage ||
-        (role === "CUTTING" && o.orderProcessingState === "CUTTING_START"),
+        (role === "CUTTING" && o.orderProcessingState === "CUTTING_START") ||
+        (role === "STITCHING" && o.orderProcessingState === "STITCHING_START") ||
+        (role === "DELIVERY" &&
+          [
+            OrderProcessingState.MATERIAL_PACKED,
+            OrderProcessingState.READY_FOR_DISPATCH,
+            OrderProcessingState.DELIVERED_AND_PAID,
+            OrderProcessingState.ORDER_COMPLETE,
+            OrderProcessingState.RETURNED,
+          ].includes(o.orderProcessingState as OrderProcessingState)),
     );
 
     if (role === "CUTTING" && filterAgentId !== "ALL") {

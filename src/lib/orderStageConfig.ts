@@ -25,10 +25,12 @@ export const STAGE_LABELS: Record<string, string> = {
   [OrderProcessingState.CUTTING_END]: "Cutting Ended / कटिंग खत्म",
   [OrderProcessingState.STITCHING_START]: "Stitching Started / सिलाई शुरू",
   [OrderProcessingState.STITCHING_END]: "Stitching Ended / सिलाई खत्म",
-  [OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED]: "QC Verified",
-  [OrderProcessingState.MATERIAL_PACKED]: "Packed",
-  [OrderProcessingState.READY_FOR_DISPATCH]: "Ready for Dispatch",
+  [OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED]: "Hemming / Turpai Started / तुरपाई शुरू",
+  [OrderProcessingState.MATERIAL_PACKED]: "Packed / पैक",
+  [OrderProcessingState.READY_FOR_DISPATCH]: "Out for Delivery",
+  [OrderProcessingState.DELIVERED_AND_PAID]: "Delivered and Paid",
   [OrderProcessingState.ORDER_COMPLETE]: "Delivered",
+  [OrderProcessingState.RETURNED]: "Returned for Alteration",
 };
 
 /**
@@ -40,17 +42,20 @@ export const STAGE_LABELS: Record<string, string> = {
 export const ROLE_QUEUE_STAGE: Record<string, OrderProcessingState> = {
   CUTTING: OrderProcessingState.ORDER_FULFILLED,
   STITCHING: OrderProcessingState.CUTTING_END,
+  DELIVERY: OrderProcessingState.MATERIAL_PACKED,
 };
 
 /** The stage a role moves an order INTO once they finish their queue item. */
 export const ROLE_COMPLETION_STAGE: Record<string, OrderProcessingState> = {
   CUTTING: OrderProcessingState.CUTTING_END,
   STITCHING: OrderProcessingState.STITCHING_END,
+  DELIVERY: OrderProcessingState.ORDER_COMPLETE,
 };
 
 export const ROLE_QUEUE_TITLE: Record<string, string> = {
   CUTTING: "Cutting Queue",
   STITCHING: "Stitching Queue",
+  DELIVERY: "Delivery Queue",
 };
 
 /** Days/hours remaining until delivery, with an urgency bucket for styling. */
