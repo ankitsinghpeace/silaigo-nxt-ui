@@ -193,61 +193,7 @@ const CustomersPage = () => {
   } = useQuery({
     queryKey: ["customers", queryString],
     queryFn: async () => {
-      try {
-        return await getCustomersList(queryString);
-      } catch (err: any) {
-        console.warn("getCustomersList API returned forbidden/error, loading customer list from orders", err);
-        const ordersRes = await getAllOrders("all_orders=1&limit=100");
-        const ordersList = ordersRes?.orders || [];
-
-        const customerMap: Record<string, any> = {};
-        ordersList.forEach((o: any) => {
-          const key = o.customerPhone || o.customerEmail || o.customerName || o.customerId;
-          if (!key) return;
-          if (!customerMap[key]) {
-            const nameParts = (o.customerName || "").trim().split(" ");
-            const firstName = nameParts[0] || "Customer";
-            const lastName = nameParts.slice(1).join(" ") || "";
-
-            customerMap[key] = {
-              userId: o.customerId || key,
-              firstName,
-              lastName,
-              phone: o.customerPhone || "",
-              email: o.customerEmail || "",
-              createdAt: o.orderDate || new Date().toISOString(),
-              addressLine1: o.address?.addressLine1 || "",
-              city: o.address?.city || "",
-              state: o.address?.state || "",
-              pincode: o.address?.pincode || "",
-              notes: o.notes || "",
-            };
-          }
-        });
-
-        let fallbackCustomers = Object.values(customerMap);
-
-        const rawSearch = (searchParams.search || searchParams.name || searchParams.email || searchParams.phone || "").toLowerCase();
-        if (rawSearch) {
-          fallbackCustomers = fallbackCustomers.filter(
-            (c: any) =>
-              (c.firstName + " " + c.lastName).toLowerCase().includes(rawSearch) ||
-              (c.phone || "").toLowerCase().includes(rawSearch) ||
-              (c.email || "").toLowerCase().includes(rawSearch) ||
-              (c.notes || "").toLowerCase().includes(rawSearch),
-          );
-        }
-
-        return {
-          customers: fallbackCustomers,
-          pagination: {
-            total: fallbackCustomers.length,
-            page: 1,
-            limit: fallbackCustomers.length,
-            totalPages: 1,
-          },
-        };
-      }
+      return await getCustomersList(queryString);
     },
   });
 
@@ -985,20 +931,29 @@ const CustomersPage = () => {
                       <TableCell>{c.phone || "-"}</TableCell>
                       <TableCell>{c.gender || "-"}</TableCell>
                       <TableCell data-testid={`customer-orders-cell-${c.userId}`}>
-                        {orderStatsMap?.[c.userId] ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-medium">{orderStatsMap[c.userId].count}</span>
-                            {orderStatsMap[c.userId].count >= 2 && (
-                              <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
-                                Repeat Customer
-                              </span>
-                            )}
-                          </div>
-                        ) : isStatsLoading ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
-                        ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
-                        )}
+                        {(() => {
+                          const stat =
+                            orderStatsMap?.[c.userId] ||
+                            (c.phone ? orderStatsMap?.[c.phone] : undefined) ||
+                            (c.email ? orderStatsMap?.[c.email] : undefined);
+                          if (stat) {
+                            return (
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-medium">{stat.count}</span>
+                                {stat.count >= 2 && (
+                                  <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                                    Repeat Customer
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          }
+                          return isStatsLoading ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         {`${addressLine1}, ${addressLine2}, ${city}, ${state}, ${pincode}` ||
