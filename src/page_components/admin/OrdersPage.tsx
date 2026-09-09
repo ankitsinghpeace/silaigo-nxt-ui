@@ -372,9 +372,14 @@ const OrdersPage = () => {
     user?.permissions?.includes(
       `${PermissionType.APPOINTMENTS}.${PermissionSubType.VIEW}`,
     );
-  const canEdit = user?.permissions?.includes(
-    `${PermissionType.ORDER}.${PermissionSubType.EDIT}`,
-  );
+  const canEdit =
+    user?.role === UserRole.ADMIN ||
+    user?.role === UserRole.PICKUP_COORDINATOR ||
+    user?.role === UserRole.CUTTING ||
+    user?.role === UserRole.STITCHING ||
+    user?.permissions?.includes(
+      `${PermissionType.ORDER}.${PermissionSubType.EDIT}`,
+    );
 
   // show oldest order 1st in came oF roles other than admin
   useEffect(() => {
@@ -609,27 +614,64 @@ const OrdersPage = () => {
 
   const selectedOrder = useMemo(() => {
     if (!selectedOrderId) return null;
-    const found =
+    let found =
       (rawOrders || []).find((o: any) => o.id === selectedOrderId || o._id === selectedOrderId) ||
       (rawPinnedOrders || []).find((o: any) => o.id === selectedOrderId || o._id === selectedOrderId) ||
       (orders || []).find((o: any) => o.id === selectedOrderId || o._id === selectedOrderId) ||
       (pinnedOrders || []).find((o: any) => o.id === selectedOrderId || o._id === selectedOrderId);
-    if (found) return found;
+
+    if (!found) {
+      const roleQueueData: any =
+        queryClient.getQueryData(["role-queue", "DELIVERY"]) ||
+        queryClient.getQueryData(["role-queue", "CUTTING"]) ||
+        queryClient.getQueryData(["role-queue", "STITCHING"]);
+      const roleQueueOrders = roleQueueData?.orders || [];
+      found = roleQueueOrders.find((o: any) => o.id === selectedOrderId || o._id === selectedOrderId);
+    }
+
+    const detailCache: any = queryClient.getQueryData(["order-detail", selectedOrderId]);
+    if (found) {
+      if (detailCache) {
+        const o = detailCache.order || detailCache;
+        return {
+          ...found,
+          orderProcessingState: o.orderProcessingState || o.processingState || found.orderProcessingState,
+          alterationNotes: o.alterationNotes ?? o.alteration_notes ?? found.alterationNotes,
+          alterationPhotos: o.alterationPhotos ?? o.alteration_photos ?? found.alterationPhotos,
+        };
+      }
+      return found;
+    }
+
+    if (detailCache) {
+      const o = detailCache.order || detailCache;
+      return {
+        id: selectedOrderId,
+        _id: selectedOrderId,
+        orderId: o.orderId || o.customOrderId || selectedOrderId,
+        orderProcessingState: o.orderProcessingState || o.processingState,
+        orderStatus: o.orderStatus || o.status,
+        alterationNotes: o.alterationNotes ?? o.alteration_notes,
+        alterationPhotos: o.alterationPhotos ?? o.alteration_photos,
+        customerName: o.customerName || detailCache.address?.name || (detailCache.customer ? `${detailCache.customer.firstName || ""} ${detailCache.customer.lastName || ""}`.trim() : undefined),
+        customerPhone: o.customerPhone || detailCache.address?.phone,
+        appointmentDate: o.appointmentDate || detailCache.appointment?.date,
+        orderDate: o.orderDate || o.createdAt,
+      };
+    }
+
     return {
       id: selectedOrderId,
       _id: selectedOrderId,
       orderId: selectedOrderId,
     };
-  }, [selectedOrderId, rawOrders, rawPinnedOrders, orders, pinnedOrders]);
+  }, [selectedOrderId, rawOrders, rawPinnedOrders, orders, pinnedOrders, queryClient]);
 
   const renderOrderDetail = (order: any) => (
     <AdminOrderDetailView
       order={order}
       canEdit={canEdit}
-      isReadOnlyProcessingState={
-        user?.role === UserRole.PICKUP_COORDINATOR &&
-        searchParams.all_orders === "1"
-      }
+      isReadOnlyProcessingState={false}
       teamMembersViaRole={teamMembersViaRole}
       cuttingAgents={cuttingAgents}
       isAssigningToStitchingAgent={isAssigningToStitchingAgent}
@@ -639,8 +681,8 @@ const OrdersPage = () => {
       onAssignStitchingAgent={(orderId, agentId) =>
         assignOrderToStitchingAgent({ orderId, agentId })
       }
-      onUpdateProcessingState={(orderId, nextState) =>
-        updateOrderProcessingState({ orderId, nextState })
+      onUpdateProcessingState={(orderId, nextState, extraData) =>
+        updateOrderProcessingState({ orderId, nextState, ...extraData })
       }
       onUpdateOrderStatus={(orderId, status) => updateOrderStatus({ orderId, status })}
       onPinOrder={(orderId, isPinned, pinPosition) =>
@@ -778,9 +820,13 @@ const OrdersPage = () => {
     mutationFn: ({
       orderId,
       nextState,
+      notes,
+      alterationPhotos,
     }: {
       orderId: string;
       nextState: string;
+      notes?: string;
+      alterationPhotos?: string[];
     }) => {
       const isSupportRole = user?.role === UserRole.SUPPORT || user?.role?.toUpperCase() === "SUPPORT";
       if (!canEdit && user?.role !== UserRole.CUTTING && user?.role !== UserRole.PICKUP_COORDINATOR && user?.role !== UserRole.ADMIN && !isSupportRole) {
@@ -788,7 +834,12 @@ const OrdersPage = () => {
           new Error("You don't have permission to update order status"),
         );
       }
-      return updateOrdersProcessingState(orderId, { nextState });
+      return updateOrdersProcessingState(orderId, {
+        nextState,
+        notes,
+        alterationNotes: notes,
+        alterationPhotos,
+      });
     },
     onSuccess: (res, { orderId, nextState }) => {
       if (
@@ -805,27 +856,23 @@ const OrdersPage = () => {
         setAssignedCuttingAgent(orderId, singleAgentId, singleAgentName);
       }
 
-      // refetchOrders();
-      queryClient.setQueryData(
-        ["orders", queryString],
-        (oldData: any) => {
-          if (!oldData) {
-            return oldData;
-          }
+      if (res) {
+        queryClient.setQueryData(["order-detail", orderId], (oldData: any) => {
+          const updatedOrder = res.order || res.data || res;
+          if (!oldData) return updatedOrder;
+          return {
+            ...oldData,
+            ...updatedOrder,
+            order: { ...(oldData.order || {}), ...(updatedOrder.order || updatedOrder) },
+          };
+        });
+      }
 
-          const updatedData = oldData.orders.map((order) => {
-            return order.id === orderId
-              ? {
-                ...order,
-                orderProcessingState: nextState,
-                timeLine: res.timeLine,
-              }
-              : order;
-          });
+      // Invalidate queries so fresh data is fetched from the server
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["role-queue"] });
+      queryClient.invalidateQueries({ queryKey: ["order-detail", orderId] });
 
-          return { ...oldData, orders: updatedData };
-        },
-      );
       toast({
         title: "Order status updated successfully",
         description: "The order status has been updated successfully",
@@ -1088,7 +1135,7 @@ const OrdersPage = () => {
       queryFn: () => {
         return getTeamMembersViaRole(UserRole.STITCHING);
       },
-      enabled: user?.role === UserRole.ADMIN || user?.role === UserRole.CUTTING || user?.role === UserRole.STITCHING,
+      enabled: Boolean(user),
       retry: false,
       staleTime: 1000 * 60 * 5,
     },
@@ -1098,66 +1145,36 @@ const OrdersPage = () => {
   const { data: cuttingAgents = [] } = useQuery({
     queryKey: ["cuttingAgents"],
     queryFn: async () => {
-      const allFetched: any[] = [];
-
       try {
         const res = await getTeamMembersViaRole(UserRole.CUTTING);
         const list = Array.isArray(res) ? res : res?.data || res?.users || res?.members || [];
-        if (Array.isArray(list)) allFetched.push(...list);
+        if (Array.isArray(list) && list.length > 0) {
+          return list;
+        }
       } catch (e) {}
 
-      if (user?.role === UserRole.ADMIN) {
-        try {
-          const [allMembersRes, rolesRes] = await Promise.allSettled([
-            getTeamMembers(),
-            getRoles(),
-          ]);
+      try {
+        const allMembersRes = await getTeamMembers();
+        const allMembers = Array.isArray(allMembersRes)
+          ? allMembersRes
+          : allMembersRes?.data || allMembersRes?.users || allMembersRes?.teamMembers || [];
 
-          const allMembers =
-            allMembersRes.status === "fulfilled"
-              ? Array.isArray(allMembersRes.value)
-                ? allMembersRes.value
-                : allMembersRes.value?.data || allMembersRes.value?.users || allMembersRes.value?.teamMembers || []
-              : [];
-
-          if (Array.isArray(allMembers)) allFetched.push(...allMembers);
-        } catch (e) {}
-      }
-
-      const map = new Map<string, any>();
-      for (const m of allFetched) {
-        if (!m) continue;
-        const key = String(m._id || m.userId || m.id || m.email || "").toLowerCase();
-        if (key && !map.has(key)) {
-          map.set(key, m);
+        if (Array.isArray(allMembers)) {
+          return allMembers.filter((m: any) => {
+            const roleVal = String(
+              typeof m.role === "string"
+                ? m.role
+                : m.role?.code || m.role?.name || m.role?.title || "",
+            ).toUpperCase();
+            const desigVal = String(m.designation || "").toUpperCase();
+            return roleVal.includes("CUT") || desigVal.includes("CUT");
+          });
         }
-      }
+      } catch (e) {}
 
-      const merged = Array.from(map.values());
-      if (merged.length === 0) return [];
-
-      const filtered = merged.filter((m: any) => {
-        const roleVal = String(
-          typeof m.role === "string"
-            ? m.role
-            : m.role?.title || m.role?.name || m.role?.code || "",
-        ).toUpperCase();
-        const desigVal = String(m.designation || "").toUpperCase();
-        const nameVal = `${m.firstName || ""} ${m.lastName || ""}`.toUpperCase();
-
-        return (
-          roleVal.includes("CUT") ||
-          desigVal.includes("CUT") ||
-          roleVal.includes("MASTER") ||
-          desigVal.includes("MASTER") ||
-          nameVal.includes("HAFEEZ") ||
-          (!roleVal.includes("ADMIN") && !roleVal.includes("CUSTOMER"))
-        );
-      });
-
-      return filtered.length > 0 ? filtered : merged;
+      return [];
     },
-    enabled: user?.role === UserRole.ADMIN || user?.role === UserRole.CUTTING || user?.role === UserRole.STITCHING,
+    enabled: Boolean(user),
     retry: false,
     staleTime: 1000 * 60 * 5,
   });
@@ -1759,6 +1776,15 @@ const OrdersPage = () => {
                   {user?.role === UserRole.STITCHING ? "Stitching Queue" : "Cutting Queue"}
                 </TabsTrigger>
               )}
+            {(user?.role === UserRole.ADMIN || user?.role === UserRole.CUTTING) && (
+              <TabsTrigger
+                value="alteration"
+                className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
+                data-testid="tab-trigger-alteration"
+              >
+                Alteration
+              </TabsTrigger>
+            )}
             {user?.role === UserRole.CUTTING || user?.role === UserRole.STITCHING ? (
               <TabsTrigger
                 value="orders"
@@ -2646,6 +2672,17 @@ const OrdersPage = () => {
                 />
               </TabsContent>
             )}
+
+          {(user.role === UserRole.ADMIN || user.role === UserRole.CUTTING) && (
+            <TabsContent value="alteration">
+              <RoleQueueView
+                role="ALTERATION"
+                onOpenOrder={openOrderModal}
+                canEdit={canEdit}
+                cuttingAgents={cuttingAgents}
+              />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
@@ -2880,41 +2917,61 @@ const OrdersPage = () => {
           <DialogOverlay className="fixed inset-0 bg-black/60 z-50" />
           <DialogContent className="fixed top-1/2 left-1/2 z-50 w-full max-w-5xl max-h-[92vh] -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col">
             {selectedOrder ? (
-              <>
-                <div className="flex items-start justify-between gap-4 border-b px-6 py-4 bg-muted/30">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-xl font-bold font-mono">
-                        {selectedOrder.orderId}
-                      </h2>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium capitalize">
-                        {selectedOrder.orderProcessingState?.replace(/_/g, " ")}
-                      </span>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium capitalize">
-                        {selectedOrder.orderStatus?.replace(/_/g, " ") || "—"}
-                      </span>
+              (() => {
+                const detailCache: any = queryClient.getQueryData(["order-detail", selectedOrder.id || selectedOrder._id]);
+                const displayOrderId =
+                  (selectedOrder.orderId && selectedOrder.orderId !== selectedOrder.id && selectedOrder.orderId !== selectedOrder._id)
+                    ? selectedOrder.orderId
+                    : detailCache?.order?.orderId || detailCache?.orderId || detailCache?.customOrderId || selectedOrder.orderId;
+                const displayState =
+                  selectedOrder.orderProcessingState || detailCache?.order?.orderProcessingState || detailCache?.orderProcessingState;
+                const displayStatus =
+                  selectedOrder.orderStatus || detailCache?.order?.orderStatus || detailCache?.orderStatus;
+                const displayCustomerName =
+                  selectedOrder.customerName || detailCache?.address?.name || (detailCache?.customer ? `${detailCache.customer.firstName || ""} ${detailCache.customer.lastName || ""}`.trim() : "");
+                const displayPhone =
+                  selectedOrder.customerPhone || detailCache?.address?.phone || "—";
 
+                return (
+                  <>
+                    <div className="flex items-start justify-between gap-4 border-b px-6 py-4 bg-muted/30">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h2 className="text-xl font-bold font-mono">
+                            {displayOrderId}
+                          </h2>
+                          {displayState && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium capitalize">
+                              {displayState.replace(/_/g, " ")}
+                            </span>
+                          )}
+                          {displayStatus && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium capitalize">
+                              {displayStatus.replace(/_/g, " ")}
+                            </span>
+                          )}
+                        </div>
+                        {(displayCustomerName || displayPhone) && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {displayCustomerName ? `${displayCustomerName} · ` : ""}{displayPhone}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsOrderModalOpen(false)}
+                      >
+                        Close
+                      </Button>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {selectedOrder.customerName} ·{" "}
-                      {selectedOrder.customerPhone || "—"}
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsOrderModalOpen(false)}
-                  >
-                    Close
-                  </Button>
-                </div>
 
-                <div className="overflow-y-auto px-6 py-5">
-                  {renderOrderDetail(selectedOrder)}
-                </div>
-
-
-              </>
+                    <div className="overflow-y-auto px-6 py-5">
+                      {renderOrderDetail(selectedOrder)}
+                    </div>
+                  </>
+                );
+              })()
             ) : null}
           </DialogContent>
         </DialogPortal>

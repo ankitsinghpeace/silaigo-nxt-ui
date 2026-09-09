@@ -15,6 +15,9 @@ import {
   DollarSign,
   ChevronDown,
   ChevronUp,
+  Upload,
+  X,
+  ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +27,16 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { uploadToS3 } from "@/lib/uploadFile";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { generateErrorMessage } from "@/lib/helpers";
@@ -58,13 +71,11 @@ const NOTIFY_STAGES: {
 const getPaymentBadge = (status?: string) => {
   switch (status) {
     case PaymentStatus.SUCCESS:
-      return { bg: "bg-green-50", text: "text-green-700", border: "border-green-200", icon: CheckCircle, label: "Success" };
+      return { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", label: "Paid", icon: CheckCircle };
     case PaymentStatus.FAILED:
-      return { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", icon: XCircle, label: "Failed" };
-    case PaymentStatus.REFUNDED:
-      return { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200", icon: DollarSign, label: "Refunded" };
+      return { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200", label: "Failed", icon: XCircle };
     default:
-      return { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200", icon: DollarSign, label: status || "Pending" };
+      return { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", label: "Pending", icon: DollarSign };
   }
 };
 
@@ -80,7 +91,11 @@ interface AdminOrderDetailViewProps {
   showAdminActions: boolean;
   onAssignStitchingAgent: (orderId: string, agentId: string) => void;
   onAssignCuttingAgent?: (orderId: string, agentId: string, agentName?: string) => void;
-  onUpdateProcessingState: (orderId: string, nextState: string) => void;
+  onUpdateProcessingState: (
+    orderId: string,
+    nextState: string,
+    extraData?: { notes?: string; alterationPhotos?: string[] }
+  ) => void;
   onUpdateOrderStatus: (orderId: string, status: string) => void;
   onPinOrder: (orderId: string, isPinned: boolean, pinPosition: number | null) => void;
   onDuplicate: (orderId: string) => void;
@@ -113,8 +128,29 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
   const [showTimeline, setShowTimeline] = useState(false);
   const [isCustomizationsOpen, setIsCustomizationsOpen] = useState(false);
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+  const getCuttingAgentFromObject = React.useCallback((obj: any) => {
+    if (!obj) return null;
+    const storeVal = getAssignedCuttingAgent(obj.id || obj._id);
+    if (storeVal?.agentId) return storeVal;
+    const agentId =
+      obj.assignedToCuttingAgentId ||
+      obj.assignedCuttingAgentId ||
+      obj.cuttingAgentId ||
+      obj.assignedCuttingAgent?._id ||
+      obj.assignedCuttingAgent?.userId ||
+      obj.assignedCuttingAgent?.id;
+    const agentName =
+      obj.assignedCuttingAgentName ||
+      obj.assignedCuttingAgent?.name ||
+      (obj.assignedCuttingAgent
+        ? `${obj.assignedCuttingAgent.firstName || ""} ${obj.assignedCuttingAgent.lastName || ""}`.trim()
+        : undefined);
+    if (agentId) return { agentId, agentName };
+    return null;
+  }, []);
+
   const [assignedCuttingAgentState, setAssignedCuttingAgentState] = useState(() =>
-    getAssignedCuttingAgent(order.id || order._id)
+    getCuttingAgentFromObject(order)
   );
 
   const isAdmin = user?.role === UserRole.ADMIN;
@@ -155,26 +191,136 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
     order.orderProcessingState || OrderProcessingState.ORDER_PLACED
   );
 
-  React.useEffect(() => {
-    if (order.orderProcessingState) {
-      setCurrentProcessingState(order.orderProcessingState);
-    }
-  }, [order.orderProcessingState]);
+  const [isAlterationDialogOpen, setIsAlterationDialogOpen] = useState(false);
+  const [alterationNotes, setAlterationNotes] = useState<string>(
+    order.alterationNotes || order.alteration_notes || ""
+  );
+  const [alterationPhotos, setAlterationPhotos] = useState<string[]>(
+    order.alterationPhotos || order.alteration_photos || []
+  );
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
-  const handleProcessingStateChange = (nextState: string) => {
-    setCurrentProcessingState(nextState);
-    onUpdateProcessingState(order.id || order._id, nextState);
-    if (nextState === OrderProcessingState.ORDER_FULFILLED && filteredCuttingAgents.length === 1) {
-      const singleAgent = filteredCuttingAgents[0];
-      const singleAgentId = singleAgent._id || singleAgent.userId || singleAgent.id;
-      const singleAgentName =
-        `${singleAgent.firstName || singleAgent.name || ""} ${singleAgent.lastName || ""}`.trim() || singleAgent.email;
-      setAssignedCuttingAgent(order.id || order._id, singleAgentId, singleAgentName);
-      setAssignedCuttingAgentState(getAssignedCuttingAgent(order.id || order._id));
-      if (onAssignCuttingAgent) {
-        onAssignCuttingAgent(order.id || order._id, singleAgentId, singleAgentName);
+  const { data: detail, isLoading } = useQuery({
+    queryKey: ["order-detail", order.id],
+    queryFn: () => getOrderByIdApi(order.id),
+    staleTime: 1000 * 60 * 2,
+    retry: 0,
+  });
+
+  React.useEffect(() => {
+    const target = detail?.order || detail || order;
+    if (target) {
+      const state = target.orderProcessingState || target.processingState;
+      if (state) {
+        setCurrentProcessingState(state);
+      }
+      const agent = getCuttingAgentFromObject(target);
+      if (agent?.agentId) {
+        setAssignedCuttingAgentState(agent);
+        setAssignedCuttingAgent(target.id || target._id || order.id || order._id, agent.agentId, agent.agentName);
+      }
+      const notesVal = target.alterationNotes ?? target.alteration_notes;
+      if (notesVal !== undefined) {
+        setAlterationNotes(notesVal || "");
+      }
+      const photosVal = target.alterationPhotos ?? target.alteration_photos;
+      if (photosVal !== undefined && Array.isArray(photosVal)) {
+        setAlterationPhotos(photosVal);
       }
     }
+  }, [order, detail, getCuttingAgentFromObject]);
+
+  const handleProcessingStateSelect = (val: string) => {
+    if (val === OrderProcessingState.RETURNED) {
+      setIsAlterationDialogOpen(true);
+    } else {
+      handleProcessingStateChange(val);
+    }
+  };
+
+  const handleProcessingStateChange = (
+    nextState: string,
+    extraData?: { notes?: string; alterationPhotos?: string[] }
+  ) => {
+    setCurrentProcessingState(nextState);
+    if (extraData?.notes !== undefined) {
+      setAlterationNotes(extraData.notes);
+    }
+    if (extraData?.alterationPhotos !== undefined) {
+      setAlterationPhotos(extraData.alterationPhotos);
+    }
+    onUpdateProcessingState(order.id || order._id, nextState, extraData);
+
+    if (nextState === OrderProcessingState.RETURNED || nextState === OrderProcessingState.ORDER_FULFILLED) {
+      let existingAgent = assignedCuttingAgentState || getCuttingAgentFromObject(detail?.order || detail || order);
+      if (!existingAgent?.agentId && filteredCuttingAgents.length === 1) {
+        const singleAgent = filteredCuttingAgents[0];
+        const singleAgentId = singleAgent._id || singleAgent.userId || singleAgent.id;
+        const singleAgentName =
+          `${singleAgent.firstName || singleAgent.name || ""} ${singleAgent.lastName || ""}`.trim() || singleAgent.email;
+        existingAgent = { agentId: singleAgentId, agentName: singleAgentName };
+      }
+
+      if (existingAgent?.agentId) {
+        setAssignedCuttingAgent(order.id || order._id, existingAgent.agentId, existingAgent.agentName);
+        setAssignedCuttingAgentState(existingAgent);
+        if (onAssignCuttingAgent) {
+          onAssignCuttingAgent(order.id || order._id, existingAgent.agentId, existingAgent.agentName);
+        }
+      }
+    }
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsUploadingPhoto(true);
+
+    try {
+      const uploadPromises = Array.from(files).map((file) => {
+        const fileInfo = {
+          resourceName: "orders",
+          resourceId: order.id || order._id || "alteration",
+          subResourceName: "alteration",
+          subResourceId: "photos",
+          fileName: file.name,
+          filename: file.name,
+          name: file.name,
+          fileType: file.type || "image/jpeg",
+          fileSize: file.size,
+          type: file.type || "image/jpeg",
+          size: file.size,
+        };
+        return uploadToS3(fileInfo, file);
+      });
+
+      const urls = await Promise.all(uploadPromises);
+      const validUrls = urls.filter(Boolean);
+      setAlterationPhotos((prev) => [...prev, ...validUrls]);
+      toast({ title: `${validUrls.length} photo(s) uploaded successfully` });
+    } catch (err: any) {
+      toast({
+        title: "Photo upload failed",
+        description: generateErrorMessage(err),
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingPhoto(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleRemovePhoto = (index: number) => {
+    setAlterationPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmitAlteration = () => {
+    handleProcessingStateChange(OrderProcessingState.RETURNED, {
+      notes: alterationNotes,
+      alterationPhotos: alterationPhotos,
+    });
+    setIsAlterationDialogOpen(false);
+    toast({ title: "Order marked as Returned for Alteration" });
   };
 
   const filteredStitchingAgents = React.useMemo(() => {
@@ -224,13 +370,6 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
     setAssignedStitchingAgentId(val);
     onAssignStitchingAgent(order.id || order._id, val === "none" ? "" : val);
   };
-
-  const { data: detail, isLoading } = useQuery({
-    queryKey: ["order-detail", order.id],
-    queryFn: () => getOrderByIdApi(order.id),
-    staleTime: 1000 * 60 * 2,
-    retry: 0,
-  });
 
   const { mutate: notifyCustomer, isPending: isNotifying, variables: notifyVars } =
     useMutation({
@@ -288,14 +427,24 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
             : []),
           {
             label: "Delivery",
-            value:
-              order.appointmentDate && !isNaN(new Date(order.appointmentDate).getTime())
-                ? `${format(new Date(order.appointmentDate), "dd MMM yyyy")}${order.appointmentTime ? ` · ${order.appointmentTime}` : ""}`
-                : "N/A",
+            value: (() => {
+              const d = order.appointmentDate || detail?.appointment?.date || detail?.order?.appointmentDate;
+              const t = order.appointmentTime || detail?.appointment?.time || detail?.order?.appointmentTime;
+              if (d && !isNaN(new Date(d).getTime())) {
+                return `${format(new Date(d), "dd MMM yyyy")}${t ? ` · ${t}` : ""}`;
+              }
+              return "N/A";
+            })(),
           },
           {
             label: "Order Date",
-            value: order.orderDate ? format(new Date(order.orderDate), "dd MMM yyyy, hh:mm a") : "N/A",
+            value: (() => {
+              const od = order.orderDate || detail?.order?.orderDate || detail?.order?.createdAt || detail?.createdAt;
+              if (od && !isNaN(new Date(od).getTime())) {
+                return format(new Date(od), "dd MMM yyyy, hh:mm a");
+              }
+              return "N/A";
+            })(),
           },
         ].map((s) => (
           <div key={s.label} className="rounded-lg border bg-muted/30 p-3" data-testid={`order-stat-${s.label.replace(/\s+/g, "-").toLowerCase()}`}>
@@ -436,10 +585,10 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                         ? currentProcessingState
                         : OrderProcessingState.MATERIAL_PACKED
                     }
-                    onValueChange={(val) => handleProcessingStateChange(val)}
+                    onValueChange={(val) => handleProcessingStateSelect(val)}
                   >
                     <SelectTrigger
-                      disabled={!canEdit || isReadOnlyProcessingState}
+                      disabled={(!canEdit && !isPickupCoordinator) || Boolean(isReadOnlyProcessingState)}
                       data-testid="order-processing-state-select"
                     >
                       <SelectValue />
@@ -455,13 +604,19 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                 ) : isCuttingAgent ? (
                   <Select
                     value={
-                      currentProcessingState === OrderProcessingState.CUTTING_END
-                        ? OrderProcessingState.CUTTING_END
-                        : currentProcessingState === OrderProcessingState.CUTTING_START
-                          ? OrderProcessingState.CUTTING_START
-                          : OrderProcessingState.ORDER_FULFILLED
+                      [
+                        OrderProcessingState.RETURNED,
+                        OrderProcessingState.ALTERATION_START,
+                        OrderProcessingState.MATERIAL_PACKED,
+                      ].includes(currentProcessingState as OrderProcessingState)
+                        ? currentProcessingState
+                        : currentProcessingState === OrderProcessingState.CUTTING_END
+                          ? OrderProcessingState.CUTTING_END
+                          : currentProcessingState === OrderProcessingState.CUTTING_START
+                            ? OrderProcessingState.CUTTING_START
+                            : OrderProcessingState.ORDER_FULFILLED
                     }
-                    onValueChange={(val) => handleProcessingStateChange(val)}
+                    onValueChange={(val) => handleProcessingStateSelect(val)}
                   >
                     <SelectTrigger
                       disabled={!canEdit && user?.role !== UserRole.CUTTING}
@@ -470,15 +625,31 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={OrderProcessingState.ORDER_FULFILLED}>
-                        Order Fulfilled
-                      </SelectItem>
-                      <SelectItem value={OrderProcessingState.CUTTING_START}>
-                        Cutting Started / कटिंग शुरू
-                      </SelectItem>
-                      <SelectItem value={OrderProcessingState.CUTTING_END}>
-                        Cutting Ended / कटिंग खत्म
-                      </SelectItem>
+                      {[
+                        OrderProcessingState.RETURNED,
+                        OrderProcessingState.ALTERATION_START,
+                        OrderProcessingState.MATERIAL_PACKED,
+                      ].includes(currentProcessingState as OrderProcessingState) ? (
+                        <>
+                          <SelectItem value={OrderProcessingState.RETURNED}>Returned for Alteration</SelectItem>
+                          <SelectItem value={OrderProcessingState.ALTERATION_START}>
+                            Alteration Started / अल्टरेशन शुरू
+                          </SelectItem>
+                          <SelectItem value={OrderProcessingState.MATERIAL_PACKED}>Packed / पैक</SelectItem>
+                        </>
+                      ) : (
+                        <>
+                          <SelectItem value={OrderProcessingState.ORDER_FULFILLED}>
+                            Order Fulfilled
+                          </SelectItem>
+                          <SelectItem value={OrderProcessingState.CUTTING_START}>
+                            Cutting Started / कटिंग शुरू
+                          </SelectItem>
+                          <SelectItem value={OrderProcessingState.CUTTING_END}>
+                            Cutting Ended / कटिंग खत्म
+                          </SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 ) : isStitchingAgent ? (
@@ -490,7 +661,7 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                           ? OrderProcessingState.STITCHING_START
                           : OrderProcessingState.CUTTING_END
                     }
-                    onValueChange={(val) => handleProcessingStateChange(val)}
+                    onValueChange={(val) => handleProcessingStateSelect(val)}
                   >
                     <SelectTrigger
                       disabled={!canEdit && user?.role !== UserRole.STITCHING}
@@ -513,13 +684,16 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                 ) : isSupport ? (
                   <Select
                     value={
-                      currentProcessingState === OrderProcessingState.MATERIAL_PACKED
-                        ? OrderProcessingState.MATERIAL_PACKED
-                        : currentProcessingState === OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED
-                          ? OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED
-                          : OrderProcessingState.STITCHING_END
+                      [
+                        OrderProcessingState.MATERIAL_PACKED,
+                        OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED,
+                        OrderProcessingState.STITCHING_END,
+                        OrderProcessingState.RETURNED,
+                      ].includes(currentProcessingState as OrderProcessingState)
+                        ? currentProcessingState
+                        : currentProcessingState || OrderProcessingState.MATERIAL_PACKED
                     }
-                    onValueChange={(val) => handleProcessingStateChange(val)}
+                    onValueChange={(val) => handleProcessingStateSelect(val)}
                   >
                     <SelectTrigger
                       disabled={!canEdit && !isSupport}
@@ -537,12 +711,15 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                       <SelectItem value={OrderProcessingState.MATERIAL_PACKED}>
                         {STAGE_LABELS[OrderProcessingState.MATERIAL_PACKED]}
                       </SelectItem>
+                      <SelectItem value={OrderProcessingState.RETURNED}>
+                        {STAGE_LABELS[OrderProcessingState.RETURNED]}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 ) : (
                   <Select
                     value={currentProcessingState || OrderProcessingState.ORDER_PLACED}
-                    onValueChange={(val) => handleProcessingStateChange(val)}
+                    onValueChange={(val) => handleProcessingStateSelect(val)}
                   >
                     <SelectTrigger disabled={!canEdit} data-testid="order-processing-state-select">
                       <SelectValue />
@@ -555,6 +732,66 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                   </Select>
                 )}
               </div>
+
+              {/* Alteration Details & Photos Card */}
+              {(() => {
+                const cleanAltNotes = (alterationNotes || "").trim();
+                const hasAltNotes =
+                  cleanAltNotes !== "" &&
+                  cleanAltNotes !== "-" &&
+                  cleanAltNotes.toUpperCase() !== "N/A";
+                const hasAltPhotos = alterationPhotos.length > 0;
+                const isReturnedState = currentProcessingState === OrderProcessingState.RETURNED;
+                const shouldShow = isReturnedState || hasAltNotes || hasAltPhotos;
+
+                if (!shouldShow) return null;
+
+                return (
+                  <div className="col-span-12 rounded-lg border border-amber-200 bg-amber-50/50 p-3.5 space-y-2.5 mt-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-semibold text-amber-900 flex items-center gap-1.5">
+                        <MessageSquareText className="w-4 h-4 text-amber-700" />
+                        Alteration Details & Photos
+                      </h4>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs bg-white border-amber-300 text-amber-900 hover:bg-amber-100/50"
+                        onClick={() => setIsAlterationDialogOpen(true)}
+                      >
+                        {hasAltNotes || hasAltPhotos ? "Edit Details" : "Add Details"}
+                      </Button>
+                    </div>
+
+                    {hasAltNotes ? (
+                      <p className="text-xs text-amber-950 bg-white p-2.5 rounded border border-amber-200/60 whitespace-pre-wrap">
+                        {cleanAltNotes}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">No alteration notes added yet.</p>
+                    )}
+
+                    {alterationPhotos.length > 0 && (
+                      <div>
+                        <span className="text-[11px] font-medium text-amber-800 block mb-1.5">
+                          Alteration Photos ({alterationPhotos.length}):
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {alterationPhotos.map((url, idx) => (
+                            <a key={idx} href={url} target="_blank" rel="noreferrer" className="group relative">
+                              <img
+                                src={url}
+                                alt={`Alteration photo ${idx + 1}`}
+                                className="w-14 h-14 object-cover rounded border border-amber-200 group-hover:opacity-90 transition"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {!isPickupCoordinator && !isCuttingAgent && !isStitchingAgent && !isSupport && (
                 <div className="flex flex-col gap-1">
@@ -598,6 +835,14 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                           </SelectItem>
                         );
                       })}
+                      {assignedCuttingAgentState?.agentId &&
+                        !filteredCuttingAgents.some(
+                          (a: any) => (a._id || a.userId || a.id) === assignedCuttingAgentState.agentId,
+                        ) && (
+                          <SelectItem value={assignedCuttingAgentState.agentId}>
+                            {assignedCuttingAgentState.agentName || "Assigned Agent"}
+                          </SelectItem>
+                        )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -750,6 +995,95 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
           setIsOptionsOpen(false);
         }}
       />
+
+      {/* Returned for Alteration Dialog */}
+      <Dialog open={isAlterationDialogOpen} onOpenChange={setIsAlterationDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold flex items-center gap-2 text-amber-900">
+              <MessageSquareText className="w-5 h-5 text-amber-600" />
+              Returned for Alteration Details
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Add alteration notes and upload photos describing what needs to be altered for this order.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                Alteration Notes / Instructions
+              </label>
+              <Textarea
+                value={alterationNotes}
+                onChange={(e) => setAlterationNotes(e.target.value)}
+                placeholder="Describe alteration requirements (e.g., shorten sleeves by 1 inch, adjust bust line...)"
+                className="text-xs min-h-[90px]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground block">
+                Alteration Photos
+              </label>
+
+              {alterationPhotos.length > 0 && (
+                <div className="grid grid-cols-4 gap-2 mb-2">
+                  {alterationPhotos.map((url, index) => (
+                    <div key={index} className="relative group border rounded overflow-hidden h-16 bg-muted">
+                      <img src={url} alt={`Upload ${index + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhoto(index)}
+                        className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 opacity-90 hover:opacity-100"
+                        title="Remove photo"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <label className="cursor-pointer inline-flex items-center gap-1.5 text-xs font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 px-3 py-2 rounded-md transition border">
+                  <Upload className="w-4 h-4" />
+                  {isUploadingPhoto ? "Uploading..." : "Upload Photo(s)"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    disabled={isUploadingPhoto}
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                </label>
+                {isUploadingPhoto && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAlterationDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="bg-teal-600 hover:bg-teal-700 text-white"
+              onClick={handleSubmitAlteration}
+              disabled={isUploadingPhoto}
+            >
+              Save & Mark Returned for Alteration
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

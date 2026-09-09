@@ -38,22 +38,32 @@ import { apiFetch } from "@/hooks/interceptor";
 //   return `https://silaigo-resources-dev--aps1-az1--x-s3.s3.ap-south-1.amazonaws.com/${urlRes.data.key}`;
 // }
 
-export const uploadToS3 = async (fileInfo:any,file:File) => {
+export const uploadToS3 = async (fileInfo: any, file: File) => {
   const fromData = new FormData();
-  const fileInfoJson = JSON.stringify(fileInfo);
+  const normalizedFileInfo = {
+    resourceName: fileInfo?.resourceName || "orders",
+    resourceId: fileInfo?.resourceId || "alteration",
+    fileType: fileInfo?.fileType || fileInfo?.type || file.type || "image/jpeg",
+    fileSize: fileInfo?.fileSize || fileInfo?.size || file.size,
+    fileName: fileInfo?.fileName || fileInfo?.filename || fileInfo?.name || file.name || "photo.jpg",
+    filename: fileInfo?.fileName || fileInfo?.filename || fileInfo?.name || file.name || "photo.jpg",
+    name: fileInfo?.fileName || fileInfo?.filename || fileInfo?.name || file.name || "photo.jpg",
+    ...fileInfo,
+  };
+  const fileInfoJson = JSON.stringify(normalizedFileInfo);
   const blob = new Blob([fileInfoJson], {
     type: 'application/json'
   });
 
-  fromData.append("file",file);
-  fromData.append("fileInfo",blob);
+  fromData.append("file", file);
+  fromData.append("fileInfo", blob);
 
-  const urlRes:any = await apiFetch("page-sections/upload-image",{
-    method:"POST",
-    body:fromData,
-    auth:true
+  const urlRes: any = await apiFetch("page-sections/upload-image", {
+    method: "POST",
+    body: fromData,
+    auth: true
   });
-  
+
   return urlRes.data.url;
 }
 

@@ -34,7 +34,7 @@ import {
 } from "@/lib/cuttingAgentStore";
 
 interface RoleQueueViewProps {
-  role: "CUTTING" | "STITCHING" | "DELIVERY";
+  role: "CUTTING" | "STITCHING" | "DELIVERY" | "ALTERATION";
   onOpenOrder: (orderId: string) => void;
   canEdit: boolean;
   cuttingAgents?: any[];
@@ -140,6 +140,11 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({
         o.orderProcessingState === queueStage ||
         (role === "CUTTING" && o.orderProcessingState === "CUTTING_START") ||
         (role === "STITCHING" && o.orderProcessingState === "STITCHING_START") ||
+        (role === "ALTERATION" &&
+          [
+            OrderProcessingState.RETURNED,
+            OrderProcessingState.ALTERATION_START,
+          ].includes(o.orderProcessingState as OrderProcessingState)) ||
         (role === "DELIVERY" &&
           [
             OrderProcessingState.MATERIAL_PACKED,
@@ -150,7 +155,7 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({
           ].includes(o.orderProcessingState as OrderProcessingState)),
     );
 
-    if (role === "CUTTING" && filterAgentId !== "ALL") {
+    if ((role === "CUTTING" || role === "ALTERATION") && filterAgentId !== "ALL") {
       filtered = filtered.filter((o: any) => {
         const orderId = o.id || o._id;
         const assignment = assignedMap[orderId];

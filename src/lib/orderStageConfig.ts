@@ -14,6 +14,9 @@ export const PROCESSING_STAGE_SEQUENCE: OrderProcessingState[] = [
   OrderProcessingState.MATERIAL_PACKED,
   OrderProcessingState.READY_FOR_DISPATCH,
   OrderProcessingState.ORDER_COMPLETE,
+  OrderProcessingState.RETURNED,
+  OrderProcessingState.ALTERATION_START,
+  OrderProcessingState.ALTERATION_END,
 ];
 
 export const STAGE_LABELS: Record<string, string> = {
@@ -31,6 +34,8 @@ export const STAGE_LABELS: Record<string, string> = {
   [OrderProcessingState.DELIVERED_AND_PAID]: "Delivered and Paid",
   [OrderProcessingState.ORDER_COMPLETE]: "Delivered",
   [OrderProcessingState.RETURNED]: "Returned for Alteration",
+  [OrderProcessingState.ALTERATION_START]: "Alteration Started / अल्टरेशन शुरू",
+  [OrderProcessingState.ALTERATION_END]: "Alteration Ended / अल्टरेशन खत्म",
 };
 
 /**
@@ -43,6 +48,7 @@ export const ROLE_QUEUE_STAGE: Record<string, OrderProcessingState> = {
   CUTTING: OrderProcessingState.ORDER_FULFILLED,
   STITCHING: OrderProcessingState.CUTTING_END,
   DELIVERY: OrderProcessingState.MATERIAL_PACKED,
+  ALTERATION: OrderProcessingState.RETURNED,
 };
 
 /** The stage a role moves an order INTO once they finish their queue item. */
@@ -50,12 +56,14 @@ export const ROLE_COMPLETION_STAGE: Record<string, OrderProcessingState> = {
   CUTTING: OrderProcessingState.CUTTING_END,
   STITCHING: OrderProcessingState.STITCHING_END,
   DELIVERY: OrderProcessingState.ORDER_COMPLETE,
+  ALTERATION: OrderProcessingState.CUTTING_START,
 };
 
 export const ROLE_QUEUE_TITLE: Record<string, string> = {
   CUTTING: "Cutting Queue",
   STITCHING: "Stitching Queue",
   DELIVERY: "Delivery Queue",
+  ALTERATION: "Alteration Queue",
 };
 
 /** Days/hours remaining until delivery, with an urgency bucket for styling. */
