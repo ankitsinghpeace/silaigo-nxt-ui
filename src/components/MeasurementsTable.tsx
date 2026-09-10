@@ -114,25 +114,63 @@ export default function MeasurementsTable({
             {category || ""}
           </TableCell>
         </TableRow>
-        {entries.map(([key, value]) => (
-          <TableRow key={key}>
-            <TableCell className="capitalize">
-              {tailoringDetailsMap[key.trim()] || key.replace(/_/g, " ")}
-            </TableCell>
-            <TableCell>
-              <ul>
-                {
-                  Object.entries(value).map(([key, val]) => {
-                    if (val === "no" || val === "") {
-                      return null
+        {entries.map(([key, value]) => {
+          const parentLabel = tailoringDetailsMap[key.trim()] || key.replace(/_/g, " ");
+
+          return (
+            <TableRow key={key}>
+              <TableCell className="capitalize font-medium">
+                {parentLabel}
+              </TableCell>
+              <TableCell>
+                <ul className="space-y-0.5">
+                  {Object.entries(value || {}).map(([subKey, val]) => {
+                    if (val === "no" || val === "" || val === null || val === undefined || val === false) {
+                      return null;
                     }
-                    return <li key={key}>{tailoringDetailsMap[key.trim()]?.replace("type", "") || key.replace(/_/g, " ")?.replace("type", "")}: {val as string}</li>
-                  })
-                }
-              </ul>
-            </TableCell>
-          </TableRow>
-        ))}
+
+                    let rawVal = String(val).trim();
+                    if (rawVal.toLowerCase() === "no") return null;
+
+                    // Clean rawVal if it ends with ": yes" or ": true"
+                    rawVal = rawVal.replace(/:\s*(yes|true)$/i, "").trim();
+
+                    // If value contains long color choices string e.g. "Piping material / गोल्डन, रोज़ गोल्ड, सिल्वर, ब्लैक, व्हाइट (कंपनी के फ़ैब्रिक की लगेगी)"
+                    // cut at comma to keep only selected choice:
+                    if (rawVal.includes(",") || rawVal.includes("गोल्डन,")) {
+                      rawVal = rawVal.split(/[,]/)[0].trim();
+                    }
+
+                    let subLabel = (tailoringDetailsMap[subKey.trim()] || subKey.replace(/_/g, " "))
+                      .replace(/\s*type\s*/gi, "")
+                      .trim();
+
+                    const isValYes = rawVal.toLowerCase() === "yes" || rawVal.toLowerCase() === "true";
+
+                    const normSub = subLabel.toLowerCase().replace(/[^a-z]/g, "");
+                    const normParent = parentLabel.toLowerCase().replace(/[^a-z]/g, "");
+                    const isRedundant =
+                      normSub === normParent ||
+                      (normSub.includes("piping") && normParent.includes("piping"));
+
+                    let displayText = "";
+                    if (isValYes) {
+                      displayText = subLabel;
+                    } else if (isRedundant) {
+                      displayText = rawVal;
+                    } else if (rawVal.toLowerCase().startsWith(subLabel.toLowerCase())) {
+                      displayText = rawVal;
+                    } else {
+                      displayText = `${subLabel}: ${rawVal}`;
+                    }
+
+                    return <li key={subKey}>{displayText}</li>;
+                  })}
+                </ul>
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </>
     );
   };

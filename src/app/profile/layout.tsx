@@ -4,7 +4,19 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Gender } from "@/types/enums";
 import { Button } from "@/components/ui/button";
-import { Pencil, X, LogOut, ChevronRight } from "lucide-react";
+import {
+  Pencil,
+  X,
+  LogOut,
+  ChevronRight,
+  Package,
+  MapPin,
+  CreditCard,
+  Headphones,
+  Share2,
+  Award,
+  Bell,
+} from "lucide-react";
 import { format } from "date-fns";
 import { updateProfile } from "@/services/modules/profile.api";
 import { useToast } from "@/hooks/use-toast";
@@ -22,14 +34,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 const menuItems = [
-  { label: "Orders", path: "/profile/orders" },
-  { label: "Address", path: "/profile/address" },
-  { label: "Saved Cards", path: "/profile/saved-cards" },
-  { label: "Customer Care", path: "/profile/customer-care" },
-  { label: "Invite Friends & Earn", path: "/profile/invite-friends" },
-  { label: "My Rewards", path: "/profile/rewards" },
-  { label: "Notifications", path: "/profile/notifications" },
-  { label: "Logout", path: "#", isLogout: true },
+  { label: "Orders", path: "/profile/orders", icon: Package },
+  { label: "Address", path: "/profile/address", icon: MapPin },
+  { label: "Saved Cards", path: "/profile/saved-cards", icon: CreditCard },
+  { label: "Customer Care", path: "/profile/customer-care", icon: Headphones },
+  { label: "Invite Friends & Earn", path: "/profile/invite-friends", icon: Share2 },
+  { label: "My Rewards", path: "/profile/rewards", icon: Award },
+  { label: "Notifications", path: "/profile/notifications", icon: Bell },
+  { label: "Logout", path: "#", isLogout: true, icon: LogOut },
 ];
 
 const getInitials = (firstName?: string, lastName?: string) => {
@@ -62,9 +74,7 @@ export default function ProfileLayout({
   });
 
   useEffect(() => {
-    const isDesktop = typeof window !== "undefined" && window.innerWidth >= 768;
-
-    if (isDesktop && pathname === "/profile") {
+    if (pathname === "/profile") {
       router.replace("/profile/orders");
     }
   }, [pathname, router]);
@@ -116,7 +126,7 @@ export default function ProfileLayout({
   };
 
   return (
-    <div className="w-full min-h-screen bg-background flex flex-col items-center px-2 py-6 sm:px-0">
+    <div className="w-full min-h-screen bg-background flex flex-col items-center px-3 py-4 sm:px-0 sm:py-6">
       <MetaTagsProvider
         title="My Profile | SilaiGo"
         description="Manage your profile"
@@ -125,7 +135,44 @@ export default function ProfileLayout({
       />
 
       <div className="w-full max-w-6xl flex flex-col md:flex-row gap-6">
-        {/* Sidebar */}
+        {/* Mobile Profile Card */}
+        <div className="flex md:hidden flex-col gap-3 w-full">
+          <div className="bg-card rounded-lg shadow-sm border p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xl font-bold flex-shrink-0">
+                {getInitials(user?.firstName, user?.lastName)}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="text-base font-semibold capitalize truncate">
+                  {user?.firstName} {user?.lastName}
+                </div>
+
+                <div className="text-muted-foreground text-xs truncate">
+                  {user?.email}
+                </div>
+
+                {user?.phone && (
+                  <div className="text-muted-foreground text-xs truncate">
+                    {user?.phone}
+                  </div>
+                )}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-shrink-0 text-xs px-2.5 h-8"
+                onClick={() => setIsEditingPersonal(true)}
+              >
+                <Pencil className="w-3.5 h-3.5 mr-1" />
+                Edit
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Sidebar */}
         <div className="hidden md:flex w-full md:w-[380px] flex-shrink-0 flex-col gap-4 sticky top-0 z-10 bg-background">
           <div className="bg-card rounded-lg shadow-sm border p-6">
             <div className="flex items-center gap-4">
@@ -158,36 +205,43 @@ export default function ProfileLayout({
           </div>
 
           <nav className="bg-card rounded-lg shadow-sm border divide-y">
-            {menuItems.map((item) =>
-              item.isLogout ? (
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              return item.isLogout ? (
                 <button
                   key={item.label}
                   onClick={logout}
-                  className="w-full p-4 flex items-center justify-between hover:bg-accent text-destructive"
+                  className="w-full p-4 flex items-center justify-between hover:bg-accent text-destructive font-medium"
                 >
-                  <span>{item.label}</span>
+                  <div className="flex items-center gap-3">
+                    <Icon className="w-5 h-5 text-destructive" />
+                    <span>{item.label}</span>
+                  </div>
 
-                  <LogOut className="w-5 h-5" />
+                  <LogOut className="w-5 h-5 text-destructive" />
                 </button>
               ) : (
                 <Link
                   key={item.path}
                   href={item.path}
-                  className={`p-4 flex items-center justify-between hover:bg-accent ${
-                    pathname === item.path ? "bg-accent font-medium" : ""
+                  className={`p-4 flex items-center justify-between hover:bg-accent transition-colors ${
+                    pathname === item.path ? "bg-accent font-medium text-primary" : ""
                   }`}
                 >
-                  <span>{item.label}</span>
+                  <div className="flex items-center gap-3">
+                    <Icon className="w-5 h-5 text-muted-foreground" />
+                    <span>{item.label}</span>
+                  </div>
 
-                  <ChevronRight className="w-5 h-5" />
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </Link>
-              ),
-            )}
+              );
+            })}
           </nav>
         </div>
 
         {/* Main */}
-        <div className="flex-1">
+        <div className="flex-1 flex flex-col gap-6">
           {isEditingPersonal ? (
             <form
               className="bg-card rounded-lg shadow-sm border p-6"
@@ -297,7 +351,47 @@ export default function ProfileLayout({
               </div>
             </form>
           ) : (
-            children
+            <>
+              {children}
+
+              {/* Mobile Vertical Menu List under content / no orders found */}
+              <div className="block md:hidden">
+                <nav className="bg-card rounded-lg shadow-sm border divide-y w-full">
+                  {menuItems.map((item) => {
+                    const Icon = item.icon;
+                    return item.isLogout ? (
+                      <button
+                        key={item.label}
+                        onClick={logout}
+                        className="w-full p-4 flex items-center justify-between hover:bg-accent text-destructive font-medium"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon className="w-5 h-5 text-destructive" />
+                          <span>{item.label}</span>
+                        </div>
+
+                        <LogOut className="w-5 h-5 text-destructive" />
+                      </button>
+                    ) : (
+                      <Link
+                        key={item.path}
+                        href={item.path}
+                        className={`p-4 flex items-center justify-between hover:bg-accent transition-colors ${
+                          pathname === item.path ? "bg-accent font-medium text-primary" : ""
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon className="w-5 h-5 text-muted-foreground" />
+                          <span>{item.label}</span>
+                        </div>
+
+                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                      </Link>
+                    );
+                  })}
+                </nav>
+              </div>
+            </>
           )}
         </div>
       </div>

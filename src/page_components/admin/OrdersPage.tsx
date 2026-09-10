@@ -163,6 +163,14 @@ export const PICKUP_COORDINATOR_TIMELINE_OPTIONS = [
   },
 ];
 
+export const PICKUP_COORDINATOR_DELIVERY_TIMELINE_OPTIONS = [
+  { value: OrderProcessingState.MATERIAL_PACKED, label: "Packed / पैक" },
+  { value: OrderProcessingState.READY_FOR_DISPATCH, label: "Out for Delivery" },
+  { value: OrderProcessingState.DELIVERED_AND_PAID, label: "Delivered and Paid" },
+  { value: OrderProcessingState.ORDER_COMPLETE, label: "Delivered" },
+  { value: OrderProcessingState.RETURNED, label: "Returned for Alteration" },
+];
+
 const ORDER_STATUS_OPTIONS_FOR_EDIT = [
   OrderStatus.COMPLETED,
   OrderStatus.CANCELLED,
@@ -534,31 +542,49 @@ const OrdersPage = () => {
   const rawOrders = data?.orders || [];
   const rawPinnedOrders = data?.pinnedOrderList || [];
 
+  const isSupportUser = user?.role === UserRole.SUPPORT || user?.role?.toUpperCase() === "SUPPORT";
+
   const orders = useMemo(() => {
-    if (
-      user?.role !== UserRole.PICKUP_COORDINATOR ||
-      searchParams.all_orders === "1"
-    ) {
+    if (searchParams.all_orders === "1") {
       return rawOrders;
     }
-    return rawOrders.filter(
-      (order: any) =>
-        order.orderProcessingState !== OrderProcessingState.ORDER_FULFILLED,
-    );
-  }, [rawOrders, searchParams.all_orders, user?.role]);
+    if (isSupportUser) {
+      return rawOrders.filter((order: any) =>
+        [
+          OrderProcessingState.STITCHING_END,
+          OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED,
+        ].includes(order.orderProcessingState as OrderProcessingState),
+      );
+    }
+    if (user?.role === UserRole.PICKUP_COORDINATOR) {
+      return rawOrders.filter(
+        (order: any) =>
+          order.orderProcessingState === OrderProcessingState.ORDER_PLACED,
+      );
+    }
+    return rawOrders;
+  }, [rawOrders, searchParams.all_orders, user?.role, isSupportUser]);
 
   const pinnedOrders = useMemo(() => {
-    if (
-      user?.role !== UserRole.PICKUP_COORDINATOR ||
-      searchParams.all_orders === "1"
-    ) {
+    if (searchParams.all_orders === "1") {
       return rawPinnedOrders;
     }
-    return rawPinnedOrders.filter(
-      (order: any) =>
-        order.orderProcessingState !== OrderProcessingState.ORDER_FULFILLED,
-    );
-  }, [rawPinnedOrders, searchParams.all_orders, user?.role]);
+    if (isSupportUser) {
+      return rawPinnedOrders.filter((order: any) =>
+        [
+          OrderProcessingState.STITCHING_END,
+          OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED,
+        ].includes(order.orderProcessingState as OrderProcessingState),
+      );
+    }
+    if (user?.role === UserRole.PICKUP_COORDINATOR) {
+      return rawPinnedOrders.filter(
+        (order: any) =>
+          order.orderProcessingState === OrderProcessingState.ORDER_PLACED,
+      );
+    }
+    return rawPinnedOrders;
+  }, [rawPinnedOrders, searchParams.all_orders, user?.role, isSupportUser]);
 
   const pagination = data?.pagination;
 
@@ -1915,7 +1941,15 @@ const OrdersPage = () => {
                                         <SelectContent className="w-max">
                                           {(user.role === UserRole.ADMIN
                                             ? ORDER_TIMELINE_OPTIONS
-                                            : PICKUP_COORDINATOR_TIMELINE_OPTIONS
+                                            : [
+                                                OrderProcessingState.MATERIAL_PACKED,
+                                                OrderProcessingState.READY_FOR_DISPATCH,
+                                                OrderProcessingState.DELIVERED_AND_PAID,
+                                                OrderProcessingState.ORDER_COMPLETE,
+                                                OrderProcessingState.RETURNED,
+                                              ].includes(order.orderProcessingState)
+                                              ? PICKUP_COORDINATOR_DELIVERY_TIMELINE_OPTIONS
+                                              : PICKUP_COORDINATOR_TIMELINE_OPTIONS
                                           ).map((opt, i) => (
                                             <SelectItem
                                               key={i}

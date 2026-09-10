@@ -573,34 +573,55 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-muted-foreground">Processing State</label>
                 {isPickupCoordinator ? (
-                  <Select
-                    value={
-                      [
-                        OrderProcessingState.MATERIAL_PACKED,
-                        OrderProcessingState.READY_FOR_DISPATCH,
-                        OrderProcessingState.DELIVERED_AND_PAID,
-                        OrderProcessingState.ORDER_COMPLETE,
-                        OrderProcessingState.RETURNED,
-                      ].includes(currentProcessingState as OrderProcessingState)
-                        ? currentProcessingState
-                        : OrderProcessingState.MATERIAL_PACKED
-                    }
-                    onValueChange={(val) => handleProcessingStateSelect(val)}
-                  >
-                    <SelectTrigger
-                      disabled={(!canEdit && !isPickupCoordinator) || Boolean(isReadOnlyProcessingState)}
-                      data-testid="order-processing-state-select"
+                  [
+                    OrderProcessingState.MATERIAL_PACKED,
+                    OrderProcessingState.READY_FOR_DISPATCH,
+                    OrderProcessingState.DELIVERED_AND_PAID,
+                    OrderProcessingState.ORDER_COMPLETE,
+                    OrderProcessingState.RETURNED,
+                  ].includes(currentProcessingState as OrderProcessingState) ? (
+                    <Select
+                      value={currentProcessingState}
+                      onValueChange={(val) => handleProcessingStateSelect(val)}
                     >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={OrderProcessingState.MATERIAL_PACKED}>Packed / पैक</SelectItem>
-                      <SelectItem value={OrderProcessingState.READY_FOR_DISPATCH}>Out for Delivery</SelectItem>
-                      <SelectItem value={OrderProcessingState.DELIVERED_AND_PAID}>Delivered and Paid</SelectItem>
-                      <SelectItem value={OrderProcessingState.ORDER_COMPLETE}>Delivered</SelectItem>
-                      <SelectItem value={OrderProcessingState.RETURNED}>Returned for Alteration</SelectItem>
-                    </SelectContent>
-                  </Select>
+                      <SelectTrigger
+                        disabled={(!canEdit && !isPickupCoordinator) || Boolean(isReadOnlyProcessingState)}
+                        data-testid="order-processing-state-select"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={OrderProcessingState.MATERIAL_PACKED}>Packed / पैक</SelectItem>
+                        <SelectItem value={OrderProcessingState.READY_FOR_DISPATCH}>Out for Delivery</SelectItem>
+                        <SelectItem value={OrderProcessingState.DELIVERED_AND_PAID}>Delivered and Paid</SelectItem>
+                        <SelectItem value={OrderProcessingState.ORDER_COMPLETE}>Delivered</SelectItem>
+                        <SelectItem value={OrderProcessingState.RETURNED}>Returned for Alteration</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Select
+                      value={
+                        [
+                          OrderProcessingState.ORDER_PLACED,
+                          OrderProcessingState.ORDER_FULFILLED,
+                        ].includes(currentProcessingState as OrderProcessingState)
+                          ? currentProcessingState
+                          : OrderProcessingState.ORDER_PLACED
+                      }
+                      onValueChange={(val) => handleProcessingStateSelect(val)}
+                    >
+                      <SelectTrigger
+                        disabled={(!canEdit && !isPickupCoordinator) || Boolean(isReadOnlyProcessingState)}
+                        data-testid="order-processing-state-select"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={OrderProcessingState.ORDER_PLACED}>Order Placed</SelectItem>
+                        <SelectItem value={OrderProcessingState.ORDER_FULFILLED}>Order Fulfilled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )
                 ) : isCuttingAgent ? (
                   <Select
                     value={
@@ -688,7 +709,6 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                         OrderProcessingState.MATERIAL_PACKED,
                         OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED,
                         OrderProcessingState.STITCHING_END,
-                        OrderProcessingState.RETURNED,
                       ].includes(currentProcessingState as OrderProcessingState)
                         ? currentProcessingState
                         : currentProcessingState || OrderProcessingState.MATERIAL_PACKED
@@ -710,9 +730,6 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                       </SelectItem>
                       <SelectItem value={OrderProcessingState.MATERIAL_PACKED}>
                         {STAGE_LABELS[OrderProcessingState.MATERIAL_PACKED]}
-                      </SelectItem>
-                      <SelectItem value={OrderProcessingState.RETURNED}>
-                        {STAGE_LABELS[OrderProcessingState.RETURNED]}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -747,7 +764,7 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                 if (!shouldShow) return null;
 
                 return (
-                  <div className="col-span-12 rounded-lg border border-amber-200 bg-amber-50/50 p-3.5 space-y-2.5 mt-1">
+                  <div className="col-span-full rounded-lg border border-amber-200 bg-amber-50/50 p-3.5 space-y-2.5 mt-1">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-semibold text-amber-900 flex items-center gap-1.5">
                         <MessageSquareText className="w-4 h-4 text-amber-700" />
