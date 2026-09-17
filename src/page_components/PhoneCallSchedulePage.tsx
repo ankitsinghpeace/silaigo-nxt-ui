@@ -125,7 +125,7 @@ const PhonceCallSchedulerPage: React.FC = () => {
       const [hh, mm] = timeSlot.split(":");
       appointmentDate.setHours(Number(hh), Number(mm));
       await schedulePhoneCall({
-        category: Number(searchParams.catId),
+        category: String(searchParams.categoryName),
         appointmentDate: appointmentDate,
         notes,
       });
@@ -141,7 +141,7 @@ const PhonceCallSchedulerPage: React.FC = () => {
         `/call-schedule-confirmation?date=${encodeURIComponent(
           formattedDate,
         )}&time=${encodeURIComponent(timeSlot)}&category=${encodeURIComponent(
-          Number(searchParams.catId),
+          String(searchParams.categoryName),
         )}`,
       );
     } catch (error) {
