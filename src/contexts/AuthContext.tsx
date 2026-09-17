@@ -151,7 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             JSON.stringify(new Date().getTime()),
           );
           if (shouldRedirect) {
-            router.push(redirect || "/phone-call-schedule?catId=4");
+            router.push(redirect || "/phone-call-schedule?categoryName=blouse");
           }
           return {
             status: true,
@@ -199,7 +199,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             JSON.stringify(new Date().getTime()),
           );
           if (shouldRedirect) {
-            router.push(redirect || "/phone-call-schedule?catId=4");
+            router.push(redirect || "/phone-call-schedule?categoryName=blouse");
           }
           return {
             status: true,

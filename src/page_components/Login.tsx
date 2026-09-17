@@ -45,7 +45,7 @@ export default function Login() {
   useEffect(() => {
     if (isAuthenticated) {
       const bookAppointment = localStorage.getItem("bookAppointment");
-      navigate(`/phone-call-schedule?catId=4`);
+      navigate(`/phone-call-schedule?categoryName=blouse`);
       // if (bookAppointment === "true") {
       //   localStorage.removeItem("bookAppointment");
       //   navigate(`/phone-call-schedule?catId=4`);
@@ -142,7 +142,7 @@ export default function Login() {
         const bookAppointment = localStorage.getItem("bookAppointment");
         if (bookAppointment === "true" && !newUser) {
           localStorage.removeItem("bookAppointment");
-          navigate(`/phone-call-schedule?catId=4`);
+          navigate(`/phone-call-schedule?categoryName=blouse`);
         } else {
           playTransition("profile");
           setSearchParams({ step: "profile" });
@@ -211,7 +211,7 @@ export default function Login() {
         const bookAppointment = localStorage.getItem("bookAppointment");
         if (bookAppointment === "true") {
           localStorage.removeItem("bookAppointment");
-          navigate(`/phone-call-schedule?catId=4`);
+          navigate(`/phone-call-schedule?categoryName=blouse`);
         }
       }
     } catch (error: any) {

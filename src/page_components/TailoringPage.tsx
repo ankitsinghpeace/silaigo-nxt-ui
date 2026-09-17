@@ -99,7 +99,7 @@ const TailoringPage = ({
       icon: <Calendar className="h-6 w-6" />,
       title: "Book Appointment",
       description: "Schedule a detailed consultation",
-      link: "https://silaigo.com/phone-call-schedule?catId=4",
+      link: "https://silaigo.com/phone-call-schedule?categoryName=blouse",
       linktype: "redirection",
     },
     {

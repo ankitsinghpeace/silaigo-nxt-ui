@@ -568,7 +568,7 @@ const OrderFlowProvider = ({ children }: { children: React.ReactNode }) => {
   const handleScheduleCallClick = async () => {
     if (isPlacingOrder) return;
     if (!handleLoginForScheduleCall()) return;
-    navigate(`/phone-call-schedule?catId=${id}`);
+    navigate(`/phone-call-schedule?categoryName=${subCategoryStyleDetails.name}`);
   };
 
   const handleBookAppoinmentClicked = async () => {
