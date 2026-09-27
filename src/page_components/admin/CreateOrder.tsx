@@ -11,10 +11,8 @@ import PlaceholderImage from "@/assets/custome-design-image-placeholder.svg";
 import { Button } from "@/components/ui/button";
 import {
   MeasurementsForm,
-  MeasurementsModal,
 } from "@/components/admin/modals/MeasurementsModal";
 import {
-  CartCheckout,
   CartCheckoutForm,
 } from "@/components/admin/modals/CartCheckout";
 import { downloadInvoicePDF } from "@/lib/downloadInvoicePdf";
@@ -35,16 +33,6 @@ import { useRouter } from "@/lib/next-router-compat";
 
 /* ========================================================= */
 
-const initialMeasurements = {
-  optionsData: {
-    category: null,
-    details: {},
-  },
-  bodyMeasurements: {
-    category: null,
-    details: {},
-  },
-};
 const getImgSrc = (src?: any) => {
   if (!src) {
     return typeof PlaceholderImage === "string"
@@ -66,10 +54,18 @@ const extractMongoIds = (obj: any): string[] => {
       return;
     }
     if (typeof val === "object") {
-      if (val.id && typeof val.id === "string" && /^[0-9a-fA-F]{24}$/.test(val.id)) {
+      if (
+        val.id &&
+        typeof val.id === "string" &&
+        /^[0-9a-fA-F]{24}$/.test(val.id)
+      ) {
         ids.add(val.id);
       }
-      if (val._id && typeof val._id === "string" && /^[0-9a-fA-F]{24}$/.test(val._id)) {
+      if (
+        val._id &&
+        typeof val._id === "string" &&
+        /^[0-9a-fA-F]{24}$/.test(val._id)
+      ) {
         ids.add(val._id);
       }
       for (const k of Object.keys(val)) {
@@ -86,38 +82,37 @@ export default function CategoryPage() {
   const navigate = useRouter();
   const router = navigate;
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
-    null,
+    null
   );
   const [selectedOptions, setSelectedOptions] = useState<any[]>([]);
   const [selectedCustomizations, setSelectedCustomizations] = useState<any[]>(
-    [],
+    []
   );
   const [selectedSubCategoryStyleId, setSelectedSubCategoryStyleId] = useState<
     string | null
   >(null);
   const [customPrice, setCustomPrice] = useState<number | null>(null);
   const [isImageModalOpened, setIsImageModalOpened] = useState(false);
-  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+
+  // Store uploaded image URL per category type (e.g. { Fabric: "url1", Neck: "url2", Back: "url3" })
+  const [categoryImages, setCategoryImages] = useState<Record<string, string>>({});
   const imageType = useRef("");
 
-  const fabricImage =
-    selectedImages.find((url: string) =>
-      url.toLowerCase().includes("fabric"),
-    ) || (selectedImages.length > 0 ? selectedImages[0] : null);
+  // Flattened array of all selected images for payloads
+  const selectedImages = Object.values(categoryImages).filter(Boolean);
 
-  // measurements state
-  // tab1 tailoring options
+  // Measurements state
   const [selectedCategory1, setSelectedCategory1] = useState<string>("");
   const [formValues1, setFormValues1] = useState<
     Record<string, Record<string, string>>
   >({});
-  // top level checkboxes
   const [visibleFields1, setVisibleFields1] = useState<Set<string>>(
-    new Set(Object.keys({})),
+    new Set(Object.keys({}))
   );
-  // tab2 body measurements
+
   const [selectedCategory2, setSelectedCategory2] = useState<string>("");
   const [formValues2, setFormValues2] = useState<Record<string, string>>({});
+
   const measurementState = {
     state: {
       selectedCategory1,
@@ -167,7 +162,7 @@ export default function CategoryPage() {
   });
 
   const selectedCategory = categories?.find(
-    (c: any) => c.id === selectedCategoryId,
+    (c: any) => c.id === selectedCategoryId
   );
 
   /* ===================== HANDLERS ===================== */
@@ -176,7 +171,7 @@ export default function CategoryPage() {
     setSelectedOptions((prev) =>
       prev.some((o) => o._id === option._id)
         ? prev.filter((o) => o._id !== option._id)
-        : [...prev, option],
+        : [...prev, option]
     );
   };
 
@@ -184,7 +179,7 @@ export default function CategoryPage() {
     setSelectedCustomizations((prev) =>
       prev.some((c) => c._id === item._id)
         ? prev.filter((c) => c._id !== item._id)
-        : [...prev, { ...item, type }],
+        : [...prev, { ...item, type }]
     );
   };
 
@@ -195,37 +190,37 @@ export default function CategoryPage() {
     setSelectedSubCategoryStyleId(null);
     setCustomPrice(null);
     setEditIndex(null);
-    setSelectedImages([]);
+    setCategoryImages({});
     imageType.current = "";
   };
 
   const buildItemObject = async () => {
     localStorage.setItem(
       "session_body_measurements",
-      JSON.stringify(formValues2),
+      JSON.stringify(formValues2)
     );
     const selectedStyle = subCategories?.styles?.find(
-      (s: any) => s._id === selectedSubCategoryStyleId,
+      (s: any) => s._id === selectedSubCategoryStyleId
     );
     let price = null;
 
-    if (customPrice > 0) {
+    if (customPrice && customPrice > 0) {
       price = customPrice;
     } else {
       const customizationPrice = getTotalCustomizationPrice(
         selectedCustomizations,
-        selectedOptions,
+        selectedOptions
       );
       const stylePrice =
-        selectedStyle.discountedPrice > 0
+        selectedStyle?.discountedPrice > 0
           ? selectedStyle.discountedPrice
-          : selectedStyle.price;
+          : selectedStyle?.price || 0;
       price = customizationPrice + stylePrice;
     }
 
     const orderId = await getAndUpdateOrderId(
       subCategories?.subCategoryId,
-      selectedStyle.name,
+      selectedStyle?.name || ""
     );
 
     return {
@@ -236,12 +231,13 @@ export default function CategoryPage() {
       subCategory: subCategories?.subCategoryId,
       subCategoryStyleId: selectedSubCategoryStyleId,
       options: selectedOptions.map((el) => ({
-        categoryId: selectedCategory._id,
+        categoryId: selectedCategory?._id,
         optionId: el._id,
       })),
       imageUrls: selectedImages,
+      categoryImages,
       customPrice: price,
-      isCustomPriceManuallySet: customPrice > 0,
+      isCustomPriceManuallySet: customPrice !== null && customPrice > 0,
       measurements: {
         optionsData: {
           category: selectedCategory1,
@@ -257,16 +253,16 @@ export default function CategoryPage() {
       meta: {
         category: selectedCategory
           ? {
-            id: selectedCategory._id,
-            name: selectedCategory.name,
-          }
+              id: selectedCategory._id,
+              name: selectedCategory.name,
+            }
           : null,
         style: selectedStyle
           ? {
-            id: selectedStyle._id,
-            name: selectedStyle.name,
-            image: selectedStyle.image || PlaceholderImage,
-          }
+              id: selectedStyle._id,
+              name: selectedStyle.name,
+              image: selectedStyle.image || PlaceholderImage,
+            }
           : null,
         selectedCategoryId,
       },
@@ -274,13 +270,9 @@ export default function CategoryPage() {
   };
 
   const handleAddToCart = async () => {
-    const isFabricSelected = selectedImages.filter((el) => {
-      return el.toLowerCase().includes("fabric");
-    });
-
-    if (isFabricSelected.length === 0) {
+    if (!categoryImages["Fabric"]) {
       toast({
-        description: "please! select a fabric image",
+        description: "Please select a fabric image",
         variant: "destructive",
       });
       return;
@@ -313,7 +305,7 @@ export default function CategoryPage() {
     setSelectedSubCategoryStyleId(item.subCategoryStyleId ?? null);
     setSelectedOptions(item.options.map((o: any) => ({ _id: o.optionId })));
     setSelectedCustomizations(
-      item?.customizations.map((c: any) => ({ _id: c.optionId, type: c.type })),
+      item?.customizations.map((c: any) => ({ _id: c.optionId, type: c.type }))
     );
     setSelectedCategoryId(item.meta.selectedCategoryId);
     const { optionsData, bodyMeasurement } = item.measurements;
@@ -322,7 +314,7 @@ export default function CategoryPage() {
 
     setSelectedCategory2(bodyMeasurement.category);
     setFormValues2(bodyMeasurement);
-    setSelectedImages(item.imageUrls);
+    setCategoryImages(item.categoryImages || {});
   };
 
   const handleRemoveItem = (index: number) => {
@@ -333,27 +325,24 @@ export default function CategoryPage() {
     }
   };
 
-  /// place order
+  /* ===================== CHECKOUT ===================== */
   const {
     mutateAsync: checkoutCart,
-    isPending: isPlacingOrder,
-    error: placingOrderError,
   } = useMutation({
     mutationFn: (payload: any) => {
       return cartCheckoutApi(payload);
     },
     onSuccess: async (res: any) => {
-      // Set initial processing state to ORDER_PLACED (Order Created) on backend
       try {
         const orderList = Array.isArray(res)
           ? res
           : Array.isArray(res?.data)
-          ? res.data
-          : Array.isArray(res?.orders)
-          ? res.orders
-          : res
-          ? [res]
-          : [];
+            ? res.data
+            : Array.isArray(res?.orders)
+              ? res.orders
+              : res
+                ? [res]
+                : [];
 
         for (const item of orderList) {
           const targetId = item?.id || item?._id || item?.orderId;
@@ -370,16 +359,16 @@ export default function CategoryPage() {
         if (pId) {
           try {
             const createdPickups = JSON.parse(
-              localStorage.getItem("createdOrderPickupIds") || "[]",
+              localStorage.getItem("createdOrderPickupIds") || "[]"
             );
             if (!createdPickups.includes(pId)) {
               createdPickups.push(pId);
               localStorage.setItem(
                 "createdOrderPickupIds",
-                JSON.stringify(createdPickups),
+                JSON.stringify(createdPickups)
               );
             }
-          } catch (e) { }
+          } catch (e) {}
           localStorage.removeItem("pickupId");
         }
       }
@@ -427,6 +416,7 @@ export default function CategoryPage() {
             measurements,
             isCustomPriceManuallySet,
             imageUrls,
+            categoryImages: _,
             ...remaining
           } = item;
           return {
@@ -456,12 +446,14 @@ export default function CategoryPage() {
               page: "1",
               limit: "10",
               sortBy: "newest",
-            }).toString(),
+            }).toString()
           );
           const matched = (latest?.orders || []).filter(
             (o: any) =>
-              selectedItems.some((item) => item.orderId && o.orderId === item.orderId) ||
-              (customerData.phone && o.customerPhone === customerData.phone),
+              selectedItems.some(
+                (item) => item.orderId && o.orderId === item.orderId
+              ) ||
+              (customerData.phone && o.customerPhone === customerData.phone)
           );
           matched.forEach((m: any) => {
             const hex = m.id || m._id;
@@ -495,8 +487,8 @@ export default function CategoryPage() {
       }, 0);
 
       const extraItemsTotal = extra_items.reduce(
-        (sum, item) => sum + item.unitCost * item.qty,
-        0,
+        (sum: number, item: any) => sum + item.unitCost * item.qty,
+        0
       );
       const subTotal = cartTotal + extraItemsTotal;
 
@@ -602,7 +594,7 @@ export default function CategoryPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {selectedCategory.options.map((opt: any) => {
                 const isSelected = selectedOptions.some(
-                  (o) => o._id === opt._id,
+                  (o) => o._id === opt._id
                 );
 
                 return (
@@ -687,73 +679,95 @@ export default function CategoryPage() {
               imageType.current = "Fabric";
               setIsImageModalOpened(true);
             }}
-            className={`border w-[50%] md:w-[20%] rounded overflow-hidden cursor-pointer ${fabricImage ? "ring-2 ring-primary" : ""
-              }`}
+            className={`border w-[50%] md:w-[20%] rounded overflow-hidden cursor-pointer ${
+              categoryImages["Fabric"] ? "ring-2 ring-primary" : ""
+            }`}
           >
             <img
-              src={getImgSrc(fabricImage)}
+              src={getImgSrc(categoryImages["Fabric"])}
               className="w-full aspect-square object-cover"
               alt="Fabric"
             />
             <div className="p-2 text-center flex flex-col items-center gap-1">
               <p className="font-medium">Fabric</p>
-              {fabricImage && (
-                <span className="text-xs text-primary font-semibold">Image Added</span>
+              {categoryImages["Fabric"] && (
+                <span className="text-xs text-primary font-semibold">
+                  Image Added
+                </span>
               )}
             </div>
           </div>
 
           {customizations
-            ?.sort((a, b) => a.rank - b.rank)
-            .map((cat: any) => (
-              <div key={cat._id} className="space-y-3">
-                <h3 className="font-medium">{cat.type}</h3>
-                <Button
-                  onClick={() => {
-                    imageType.current = cat.type.replaceAll(" ", "-");
-                    setIsImageModalOpened(true);
-                  }}
-                >
-                  Add images
-                </Button>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {cat.options.map((design: any) => {
-                    const isSelected = selectedCustomizations.some(
-                      (c) => c._id === design._id,
-                    );
+            ?.sort((a: any, b: any) => a.rank - b.rank)
+            .map((cat: any) => {
+              const currentCatImage = categoryImages[cat.type];
 
-                    return (
-                      <div
-                        key={design._id}
-                        onClick={() => toggleCustomization(design, cat.type)}
-                        className={`border rounded overflow-hidden cursor-pointer
-                      ${isSelected ? "ring-2 ring-primary" : ""}
-                    `}
-                      >
-                        <img
-                          src={getImgSrc(design.imageUrl)}
-                          className="w-full aspect-square object-cover"
-                          alt={design.title}
-                        />
-                        <div className="p-2 text-center">
-                          <p className="font-medium">{design.title}</p>
+              return (
+                <div key={cat._id} className="space-y-3">
+                  <h3 className="font-medium">{cat.type}</h3>
+                  <div
+                    onClick={() => {
+                      imageType.current = `${cat.type}`;
+                      setIsImageModalOpened(true);
+                    }}
+                    className={`border w-[50%] md:w-[20%] rounded overflow-hidden cursor-pointer ${
+                      currentCatImage ? "ring-2 ring-primary" : ""
+                    }`}
+                  >
+                    <img
+                      src={getImgSrc(currentCatImage)}
+                      className="w-full aspect-square object-cover"
+                      alt={cat.type}
+                    />
+                    <div className="p-2 text-center flex flex-col items-center gap-1">
+                      <p className="font-medium">{cat.type}</p>
+                      {currentCatImage && (
+                        <span className="text-xs text-primary font-semibold">
+                          Image Added
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {cat.options.map((design: any) => {
+                      const isSelected = selectedCustomizations.some(
+                        (c) => c._id === design._id
+                      );
 
-                          {design.discountedPrice && (
-                            <p className="text-xs line-through text-muted-foreground">
-                              ₹{design.price}
+                      return (
+                        <div
+                          key={design._id}
+                          onClick={() => toggleCustomization(design, cat.type)}
+                          className={`border rounded overflow-hidden cursor-pointer
+                        ${isSelected ? "ring-2 ring-primary" : ""}
+                      `}
+                        >
+                          <img
+                            src={getImgSrc(design.imageUrl)}
+                            className="w-full aspect-square object-cover"
+                            alt={design.title}
+                          />
+                          <div className="p-2 text-center">
+                            <p className="font-medium">{design.title}</p>
+
+                            {design.discountedPrice && (
+                              <p className="text-xs line-through text-muted-foreground">
+                                ₹{design.price}
+                              </p>
+                            )}
+
+                            <p className="text-sm text-primary font-semibold">
+                              ₹{design.discountedPrice ?? design.price}
                             </p>
-                          )}
-
-                          <p className="text-sm text-primary font-semibold">
-                            ₹{design.discountedPrice ?? design.price}
-                          </p>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
         </section>
 
         <div className="p-6 border-2 border-gray-400 rounded-lg mt-5">
@@ -783,6 +797,7 @@ export default function CategoryPage() {
           </Button>
         </section>
       </section>
+
       {/* ===================== SELECTED ITEMS ===================== */}
       <section className="w-full md:w-[35%] flex flex-col gap-2 border-l-0 md:border-l-2 px-4">
         <h2 className="text-lg font-semibold">Selected Items</h2>
@@ -863,6 +878,7 @@ export default function CategoryPage() {
           />
         </div>
       </section>
+
       <MultiImageBookingModal
         open={isImageModalOpened}
         onOpenChange={setIsImageModalOpened}
@@ -870,11 +886,18 @@ export default function CategoryPage() {
           setIsImageModalOpened(false);
         }}
         onImageSelect={function (urls: string[]): void {
-          setSelectedImages((prev) => {
-            return [...new Set([...prev, ...urls])];
-          });
+          if (urls.length > 0 && imageType.current) {
+            setCategoryImages((prev) => ({
+              ...prev,
+              [imageType.current]: urls[urls.length - 1],
+            }));
+          }
         }}
-        alreadySelectedImages={selectedImages}
+        alreadySelectedImages={
+          categoryImages[imageType.current]
+            ? [categoryImages[imageType.current]]
+            : []
+        }
         isPreviewMode={false}
         type={imageType.current}
       />

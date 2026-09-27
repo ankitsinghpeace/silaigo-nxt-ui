@@ -454,7 +454,7 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+   <div className="grid gap-4 lg:grid-cols-2">
         {/* Left column: style, customizations, address, measurements */}
         <div className="space-y-4">
           <div className="rounded-lg border p-4">
@@ -462,33 +462,85 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
             {isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
             ) : (
-              <div className="flex flex-col sm:flex-row gap-4">
-                {fabricImageUrl && (
-                  <ImagePreview
-                    src={fabricImageUrl}
-                    alt={productName}
-                    className="h-44 w-44 shrink-0 rounded-lg object-cover"
-                    showRemoveButton={false}
-                  />
-                )}
-                <div className="flex-1 min-w-0 space-y-2">
-                  <p className="font-medium">{productName}</p>
-                  {customizations.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {customizations.map((c: any, i: number) => (
-                        <span
-                          key={`${c.id}-${i}`}
-                          className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2 py-1 text-xs"
-                        >
-                          {c.title}
-                          {c.price > 0 && !isCuttingAgent && !isStitchingAgent && <span className="text-muted-foreground">₹{c.price}</span>}
-                        </span>
-                      ))}
-                    </div>
+              <div className="space-y-4">
+                <p className="font-medium">{productName}</p>
+                
+                {/* Display All Uploaded Images in a Grid with Labels */}
+                {(() => {
+                  const categoryImagesMap = order.categoryImages || detail?.order?.categoryImages || {};
+                  const hasCategoryImages = Object.keys(categoryImagesMap).length > 0;
+
+                  if (hasCategoryImages) {
+                    return (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {Object.entries(categoryImagesMap).map(([type, url]: [string, any]) => (
+                          url ? (
+                            <div key={type} className="border rounded-lg overflow-hidden bg-muted/20">
+                              <ImagePreview
+                                src={url}
+                                alt={type}
+                                className="h-32 w-full object-cover"
+                                showRemoveButton={false}
+                              />
+                              <div className="p-1.5 text-center bg-white border-t">
+                                <span className="text-xs font-semibold text-gray-700">{type}</span>
+                              </div>
+                            </div>
+                          ) : null
+                        ))}
+                      </div>
+                    );
+                  }
+
+                  if (allImageUrls.length > 0) {
+                    return (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {allImageUrls.map((url: string, index: number) => (
+                          <div key={index} className="border rounded-lg overflow-hidden bg-muted/20">
+                            <ImagePreview
+                              src={url}
+                              alt={`Image ${index + 1}`}
+                              className="h-32 w-full object-cover"
+                              showRemoveButton={false}
+                            />
+                            <div className="p-1.5 text-center bg-white border-t">
+                              <span className="text-xs font-semibold text-gray-700">
+                                {url.toLowerCase().includes("fabric") ? "Fabric" : `Image ${index + 1}`}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+
+                  return fabricImageUrl ? (
+                    <ImagePreview
+                      src={fabricImageUrl}
+                      alt={productName}
+                      className="h-44 w-44 rounded-lg object-cover"
+                      showRemoveButton={false}
+                    />
                   ) : (
-                    <p className="text-xs text-muted-foreground">No customisations recorded.</p>
-                  )}
-                </div>
+                    <p className="text-xs text-muted-foreground">No images uploaded.</p>
+                  );
+                })()}
+
+                {customizations.length > 0 ? (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {customizations.map((c: any, i: number) => (
+                      <span
+                        key={`${c.id}-${i}`}
+                        className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2 py-1 text-xs"
+                      >
+                        {c.title}
+                        {c.price > 0 && !isCuttingAgent && !isStitchingAgent && <span className="text-muted-foreground">₹{c.price}</span>}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No customisations recorded.</p>
+                )}
               </div>
             )}
             {showAdminActions && (
