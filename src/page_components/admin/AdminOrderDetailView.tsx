@@ -40,42 +40,70 @@ import { uploadToS3 } from "@/lib/uploadFile";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { generateErrorMessage } from "@/lib/helpers";
-import {
-  getOrderByIdApi,
-  notifyOrderApi,
-} from "@/services/modules/orders.api";
+import { getOrderByIdApi, notifyOrderApi } from "@/services/modules/orders.api";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/services/auth.api";
-import { OrderProcessingState, OrderStatus, PaymentStatus } from "@/types/enums";
+import {
+  OrderProcessingState,
+  OrderStatus,
+  PaymentStatus,
+} from "@/types/enums";
 import MeasurementsTable from "@/components/MeasurementsTable";
 import ImagePreview from "@/components/admin/ImagePreview";
 import OrderTimelineView from "@/components/OrderTImeLineView";
 import UpdateOrderCustomizations from "@/page_components/admin/UpdateOrderCustomizations";
 import UpdateOrderOptions from "@/page_components/admin/UpdateOrderOptions";
 import { cn } from "@/lib/utils";
-import { PROCESSING_STAGE_SEQUENCE, STAGE_LABELS } from "@/lib/orderStageConfig";
-import { getAssignedCuttingAgent, setAssignedCuttingAgent } from "@/lib/cuttingAgentStore";
+import {
+  PROCESSING_STAGE_SEQUENCE,
+  STAGE_LABELS,
+} from "@/lib/orderStageConfig";
+import {
+  getAssignedCuttingAgent,
+  setAssignedCuttingAgent,
+} from "@/lib/cuttingAgentStore";
 
-const ORDER_STATUS_EDIT_OPTIONS = [OrderStatus.COMPLETED, OrderStatus.CANCELLED];
+const ORDER_STATUS_EDIT_OPTIONS = [
+  OrderStatus.COMPLETED,
+  OrderStatus.CANCELLED,
+];
 
 const NOTIFY_STAGES: {
   value: "picked_up" | "ready" | "dispatched" | "delivered";
   label: string;
 }[] = [
-    { value: "picked_up", label: "Picked Up" },
-    { value: "ready", label: "Almost Ready" },
-    { value: "dispatched", label: "Out for Delivery" },
-    { value: "delivered", label: "Delivered" },
-  ];
+  { value: "picked_up", label: "Picked Up" },
+  { value: "ready", label: "Almost Ready" },
+  { value: "dispatched", label: "Out for Delivery" },
+  { value: "delivered", label: "Delivered" },
+];
 
 const getPaymentBadge = (status?: string) => {
   switch (status) {
     case PaymentStatus.SUCCESS:
-      return { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", label: "Paid", icon: CheckCircle };
+      return {
+        bg: "bg-emerald-50",
+        text: "text-emerald-700",
+        border: "border-emerald-200",
+        label: "Paid",
+        icon: CheckCircle,
+      };
     case PaymentStatus.FAILED:
-      return { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200", label: "Failed", icon: XCircle };
+      return {
+        bg: "bg-rose-50",
+        text: "text-rose-700",
+        border: "border-rose-200",
+        label: "Failed",
+        icon: XCircle,
+      };
     default:
-      return { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", label: "Pending", icon: DollarSign };
+      return {
+        bg: "bg-amber-50",
+        text: "text-amber-700",
+        border: "border-amber-200",
+        label: "Pending",
+        icon: DollarSign,
+      };
   }
 };
 
@@ -90,14 +118,22 @@ interface AdminOrderDetailViewProps {
   isDuplicating: boolean;
   showAdminActions: boolean;
   onAssignStitchingAgent: (orderId: string, agentId: string) => void;
-  onAssignCuttingAgent?: (orderId: string, agentId: string, agentName?: string) => void;
+  onAssignCuttingAgent?: (
+    orderId: string,
+    agentId: string,
+    agentName?: string,
+  ) => void;
   onUpdateProcessingState: (
     orderId: string,
     nextState: string,
-    extraData?: { notes?: string; alterationPhotos?: string[] }
+    extraData?: { notes?: string; alterationPhotos?: string[] },
   ) => void;
   onUpdateOrderStatus: (orderId: string, status: string) => void;
-  onPinOrder: (orderId: string, isPinned: boolean, pinPosition: number | null) => void;
+  onPinOrder: (
+    orderId: string,
+    isPinned: boolean,
+    pinPosition: number | null,
+  ) => void;
   onDuplicate: (orderId: string) => void;
   onDelete: (orderId: string) => void;
   onEditMeasurements: (orderId: string, measurements: any) => void;
@@ -149,15 +185,16 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
     return null;
   }, []);
 
-  const [assignedCuttingAgentState, setAssignedCuttingAgentState] = useState(() =>
-    getCuttingAgentFromObject(order)
+  const [assignedCuttingAgentState, setAssignedCuttingAgentState] = useState(
+    () => getCuttingAgentFromObject(order),
   );
 
   const isAdmin = user?.role === UserRole.ADMIN;
   const isPickupCoordinator = user?.role === UserRole.PICKUP_COORDINATOR;
   const isCuttingAgent = user?.role === UserRole.CUTTING;
   const isStitchingAgent = user?.role === UserRole.STITCHING;
-  const isSupport = user?.role === UserRole.SUPPORT || user?.role?.toUpperCase() === "SUPPORT";
+  const isSupport =
+    user?.role === UserRole.SUPPORT || user?.role?.toUpperCase() === "SUPPORT";
 
   const filteredCuttingAgents = React.useMemo(() => {
     return Array.isArray(cuttingAgents) ? cuttingAgents : [];
@@ -166,7 +203,8 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
   const activeCuttingAgentValue = React.useMemo(() => {
     if (!assignedCuttingAgentState?.agentId) return "none";
     const exists = filteredCuttingAgents.some(
-      (a: any) => (a._id || a.userId || a.id) === assignedCuttingAgentState.agentId
+      (a: any) =>
+        (a._id || a.userId || a.id) === assignedCuttingAgentState.agentId,
     );
     return exists ? assignedCuttingAgentState.agentId : "none";
   }, [assignedCuttingAgentState, filteredCuttingAgents]);
@@ -174,29 +212,39 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
   const handleCuttingAgentChange = (agentId: string) => {
     const activeList = Array.isArray(cuttingAgents) ? cuttingAgents : [];
     const selectedAgent = activeList.find(
-      (a: any) => (a._id || a.userId || a.id) === agentId
+      (a: any) => (a._id || a.userId || a.id) === agentId,
     );
     const agentName = selectedAgent
       ? `${selectedAgent.firstName || selectedAgent.name || ""} ${selectedAgent.lastName || ""}`.trim()
       : undefined;
-    setAssignedCuttingAgent(order.id || order._id, agentId === "none" ? "" : agentId, agentName);
-    setAssignedCuttingAgentState(getAssignedCuttingAgent(order.id || order._id));
+    setAssignedCuttingAgent(
+      order.id || order._id,
+      agentId === "none" ? "" : agentId,
+      agentName,
+    );
+    setAssignedCuttingAgentState(
+      getAssignedCuttingAgent(order.id || order._id),
+    );
     if (onAssignCuttingAgent) {
-      onAssignCuttingAgent(order.id || order._id, agentId === "none" ? "" : agentId, agentName);
+      onAssignCuttingAgent(
+        order.id || order._id,
+        agentId === "none" ? "" : agentId,
+        agentName,
+      );
     }
     toast({ title: "Cutting agent assigned successfully" });
   };
 
   const [currentProcessingState, setCurrentProcessingState] = useState(
-    order.orderProcessingState || OrderProcessingState.ORDER_PLACED
+    order.orderProcessingState || OrderProcessingState.ORDER_PLACED,
   );
 
   const [isAlterationDialogOpen, setIsAlterationDialogOpen] = useState(false);
   const [alterationNotes, setAlterationNotes] = useState<string>(
-    order.alterationNotes || order.alteration_notes || ""
+    order.alterationNotes || order.alteration_notes || "",
   );
   const [alterationPhotos, setAlterationPhotos] = useState<string[]>(
-    order.alterationPhotos || order.alteration_photos || []
+    order.alterationPhotos || order.alteration_photos || [],
   );
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
@@ -217,7 +265,11 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
       const agent = getCuttingAgentFromObject(target);
       if (agent?.agentId) {
         setAssignedCuttingAgentState(agent);
-        setAssignedCuttingAgent(target.id || target._id || order.id || order._id, agent.agentId, agent.agentName);
+        setAssignedCuttingAgent(
+          target.id || target._id || order.id || order._id,
+          agent.agentId,
+          agent.agentName,
+        );
       }
       const notesVal = target.alterationNotes ?? target.alteration_notes;
       if (notesVal !== undefined) {
@@ -240,7 +292,7 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
 
   const handleProcessingStateChange = (
     nextState: string,
-    extraData?: { notes?: string; alterationPhotos?: string[] }
+    extraData?: { notes?: string; alterationPhotos?: string[] },
   ) => {
     setCurrentProcessingState(nextState);
     if (extraData?.notes !== undefined) {
@@ -251,21 +303,36 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
     }
     onUpdateProcessingState(order.id || order._id, nextState, extraData);
 
-    if (nextState === OrderProcessingState.RETURNED || nextState === OrderProcessingState.ORDER_FULFILLED) {
-      let existingAgent = assignedCuttingAgentState || getCuttingAgentFromObject(detail?.order || detail || order);
+    if (
+      nextState === OrderProcessingState.RETURNED ||
+      nextState === OrderProcessingState.ORDER_FULFILLED
+    ) {
+      let existingAgent =
+        assignedCuttingAgentState ||
+        getCuttingAgentFromObject(detail?.order || detail || order);
       if (!existingAgent?.agentId && filteredCuttingAgents.length === 1) {
         const singleAgent = filteredCuttingAgents[0];
-        const singleAgentId = singleAgent._id || singleAgent.userId || singleAgent.id;
+        const singleAgentId =
+          singleAgent._id || singleAgent.userId || singleAgent.id;
         const singleAgentName =
-          `${singleAgent.firstName || singleAgent.name || ""} ${singleAgent.lastName || ""}`.trim() || singleAgent.email;
+          `${singleAgent.firstName || singleAgent.name || ""} ${singleAgent.lastName || ""}`.trim() ||
+          singleAgent.email;
         existingAgent = { agentId: singleAgentId, agentName: singleAgentName };
       }
 
       if (existingAgent?.agentId) {
-        setAssignedCuttingAgent(order.id || order._id, existingAgent.agentId, existingAgent.agentName);
+        setAssignedCuttingAgent(
+          order.id || order._id,
+          existingAgent.agentId,
+          existingAgent.agentName,
+        );
         setAssignedCuttingAgentState(existingAgent);
         if (onAssignCuttingAgent) {
-          onAssignCuttingAgent(order.id || order._id, existingAgent.agentId, existingAgent.agentName);
+          onAssignCuttingAgent(
+            order.id || order._id,
+            existingAgent.agentId,
+            existingAgent.agentName,
+          );
         }
       }
     }
@@ -326,22 +393,26 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
   const filteredStitchingAgents = React.useMemo(() => {
     if (!Array.isArray(teamMembersViaRole)) return [];
     return teamMembersViaRole.filter((agent: any) => {
-      const r = typeof agent.role === "string" ? agent.role : agent.role?.code || agent.role?.name;
+      const r =
+        typeof agent.role === "string"
+          ? agent.role
+          : agent.role?.code || agent.role?.name;
       if (!r) return true;
       return String(r).toUpperCase() === "STITCHING";
     });
   }, [teamMembersViaRole]);
 
-  const [assignedStitchingAgentId, setAssignedStitchingAgentId] = useState<string>(() => {
-    return (
-      order.assignedToStitchingAgentId ||
-      order.assignedStitchingAgentId ||
-      order.assignedStitchingAgent?._id ||
-      order.assignedStitchingAgent?.userId ||
-      order.assignedStitchingAgent?.id ||
-      "none"
-    );
-  });
+  const [assignedStitchingAgentId, setAssignedStitchingAgentId] =
+    useState<string>(() => {
+      return (
+        order.assignedToStitchingAgentId ||
+        order.assignedStitchingAgentId ||
+        order.assignedStitchingAgent?._id ||
+        order.assignedStitchingAgent?.userId ||
+        order.assignedStitchingAgent?.id ||
+        "none"
+      );
+    });
 
   React.useEffect(() => {
     const currentId =
@@ -359,9 +430,10 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
   ]);
 
   const activeStitchingAgentValue = React.useMemo(() => {
-    if (!assignedStitchingAgentId || assignedStitchingAgentId === "none") return "none";
+    if (!assignedStitchingAgentId || assignedStitchingAgentId === "none")
+      return "none";
     const exists = filteredStitchingAgents.some(
-      (a: any) => (a._id || a.userId || a.id) === assignedStitchingAgentId
+      (a: any) => (a._id || a.userId || a.id) === assignedStitchingAgentId,
     );
     return exists ? assignedStitchingAgentId : "none";
   }, [assignedStitchingAgentId, filteredStitchingAgents]);
@@ -371,21 +443,27 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
     onAssignStitchingAgent(order.id || order._id, val === "none" ? "" : val);
   };
 
-  const { mutate: notifyCustomer, isPending: isNotifying, variables: notifyVars } =
-    useMutation({
-      mutationFn: (stage: "picked_up" | "ready" | "dispatched" | "delivered") =>
-        notifyOrderApi(order.id, stage),
-      onSuccess: () => {
-        toast({ title: "Customer notified", description: "SMS update sent successfully." });
-      },
-      onError: (error) => {
-        toast({
-          title: "Couldn't send notification",
-          description: `${generateErrorMessage(error)} (this action needs the backend "/orders/:id/notify" endpoint — see BACKEND_CHANGES_NEEDED.md)`,
-          variant: "destructive",
-        });
-      },
-    });
+  const {
+    mutate: notifyCustomer,
+    isPending: isNotifying,
+    variables: notifyVars,
+  } = useMutation({
+    mutationFn: (stage: "picked_up" | "ready" | "dispatched" | "delivered") =>
+      notifyOrderApi(order.id, stage),
+    onSuccess: () => {
+      toast({
+        title: "Customer notified",
+        description: "SMS update sent successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn't send notification",
+        description: `${generateErrorMessage(error)} (this action needs the backend "/orders/:id/notify" endpoint — see BACKEND_CHANGES_NEEDED.md)`,
+        variant: "destructive",
+      });
+    },
+  });
 
   const refreshDetail = () =>
     queryClient.invalidateQueries({ queryKey: ["order-detail", order.id] });
@@ -410,7 +488,8 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
 
   const fabricImageUrl =
     allImageUrls.find(
-      (url: string) => typeof url === "string" && url.toLowerCase().includes("fabric"),
+      (url: string) =>
+        typeof url === "string" && url.toLowerCase().includes("fabric"),
     ) ||
     allImageUrls[0] ||
     detail?.style?.image ||
@@ -419,17 +498,35 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
   return (
     <div className="space-y-5" data-testid="admin-order-detail-view">
       {/* Quick facts */}
-      <div className={cn("grid gap-3", isCuttingAgent || isStitchingAgent ? "grid-cols-2 md:grid-cols-3" : "grid-cols-2 md:grid-cols-4")}>
+      <div
+        className={cn(
+          "grid gap-3",
+          isCuttingAgent || isStitchingAgent
+            ? "grid-cols-2 md:grid-cols-3"
+            : "grid-cols-2 md:grid-cols-4",
+        )}
+      >
         {[
           { label: "Product", value: productName },
           ...(!isCuttingAgent && !isStitchingAgent
-            ? [{ label: "Total Amount", value: `₹${Number(totalAmount).toLocaleString()}` }]
+            ? [
+                {
+                  label: "Total Amount",
+                  value: `₹${Number(totalAmount).toLocaleString()}`,
+                },
+              ]
             : []),
           {
             label: "Delivery",
             value: (() => {
-              const d = order.appointmentDate || detail?.appointment?.date || detail?.order?.appointmentDate;
-              const t = order.appointmentTime || detail?.appointment?.time || detail?.order?.appointmentTime;
+              const d =
+                order.appointmentDate ||
+                detail?.appointment?.date ||
+                detail?.order?.appointmentDate;
+              const t =
+                order.appointmentTime ||
+                detail?.appointment?.time ||
+                detail?.order?.appointmentTime;
               if (d && !isNaN(new Date(d).getTime())) {
                 return `${format(new Date(d), "dd MMM yyyy")}${t ? ` · ${t}` : ""}`;
               }
@@ -439,7 +536,11 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
           {
             label: "Order Date",
             value: (() => {
-              const od = order.orderDate || detail?.order?.orderDate || detail?.order?.createdAt || detail?.createdAt;
+              const od =
+                order.orderDate ||
+                detail?.order?.orderDate ||
+                detail?.order?.createdAt ||
+                detail?.createdAt;
               if (od && !isNaN(new Date(od).getTime())) {
                 return format(new Date(od), "dd MMM yyyy, hh:mm a");
               }
@@ -447,69 +548,102 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
             })(),
           },
         ].map((s) => (
-          <div key={s.label} className="rounded-lg border bg-muted/30 p-3" data-testid={`order-stat-${s.label.replace(/\s+/g, "-").toLowerCase()}`}>
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{s.label}</div>
+          <div
+            key={s.label}
+            className="rounded-lg border bg-muted/30 p-3"
+            data-testid={`order-stat-${s.label.replace(/\s+/g, "-").toLowerCase()}`}
+          >
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              {s.label}
+            </div>
             <div className="text-sm font-semibold break-words">{s.value}</div>
           </div>
         ))}
       </div>
 
-   <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         {/* Left column: style, customizations, address, measurements */}
         <div className="space-y-4">
           <div className="rounded-lg border p-4">
-            <h3 className="text-sm font-semibold mb-3">Style & Customisations</h3>
+            <h3 className="text-sm font-semibold mb-3">
+              Style & Customisations
+            </h3>
             {isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
             ) : (
               <div className="space-y-4">
                 <p className="font-medium">{productName}</p>
-                
-                {/* Display All Uploaded Images in a Grid with Labels */}
+
+                {/* Display All Uploaded Images in a Grid with Labels by Category */}
                 {(() => {
-                  const categoryImagesMap = order.categoryImages || detail?.order?.categoryImages || {};
-                  const hasCategoryImages = Object.keys(categoryImagesMap).length > 0;
+                  // 1. Gather categoryImages map from various possible payload structures
+                  const categoryImagesMap =
+                    order.categoryImages || detail?.order?.categoryImages || {};
+                  const hasCategoryImages =
+                    Object.keys(categoryImagesMap).length > 0;
 
                   if (hasCategoryImages) {
                     return (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {Object.entries(categoryImagesMap).map(([type, url]: [string, any]) => (
-                          url ? (
-                            <div key={type} className="border rounded-lg overflow-hidden bg-muted/20">
-                              <ImagePreview
-                                src={url}
-                                alt={type}
-                                className="h-32 w-full object-cover"
-                                showRemoveButton={false}
-                              />
-                              <div className="p-1.5 text-center bg-white border-t">
-                                <span className="text-xs font-semibold text-gray-700">{type}</span>
+                        {Object.entries(categoryImagesMap).map(
+                          ([type, url]: [string, any]) =>
+                            url ? (
+                              <div
+                                key={type}
+                                className="border rounded-lg overflow-hidden bg-muted/20"
+                              >
+                                <ImagePreview
+                                  src={url}
+                                  alt={type}
+                                  className="h-32 w-full object-cover"
+                                  showRemoveButton={false}
+                                />
+                                <div className="p-1.5 text-center bg-white border-t">
+                                  {/* Dynamically display the category type name (e.g., Fabric, Neck, Back) */}
+                                  <span className="text-xs font-semibold text-gray-700 capitalize">
+                                    {type}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                          ) : null
-                        ))}
+                            ) : null,
+                        )}
                       </div>
                     );
                   }
 
+                  // 2. Fallback to parsing allImageUrls if categoryImages map is missing
                   if (allImageUrls.length > 0) {
                     return (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {allImageUrls.map((url: string, index: number) => (
-                          <div key={index} className="border rounded-lg overflow-hidden bg-muted/20">
-                            <ImagePreview
-                              src={url}
-                              alt={`Image ${index + 1}`}
-                              className="h-32 w-full object-cover"
-                              showRemoveButton={false}
-                            />
-                            <div className="p-1.5 text-center bg-white border-t">
-                              <span className="text-xs font-semibold text-gray-700">
-                                {url.toLowerCase().includes("fabric") ? "Fabric" : `Image ${index + 1}`}
-                              </span>
+                        {allImageUrls.map((url: string, index: number) => {
+                          const lowerUrl = url.toLowerCase();
+                          // Detect label from URL or fallback nicely
+                          let label = `Image ${index + 1}`;
+                          if (lowerUrl.includes("fabric")) label = "Fabric";
+                          else if (lowerUrl.includes("neck")) label = "Neck";
+                          else if (lowerUrl.includes("back")) label = "Back";
+                          else if (lowerUrl.includes("sleeve"))
+                            label = "Sleeves";
+
+                          return (
+                            <div
+                              key={index}
+                              className="border rounded-lg overflow-hidden bg-muted/20"
+                            >
+                              <ImagePreview
+                                src={url}
+                                alt={label}
+                                className="h-32 w-full object-cover"
+                                showRemoveButton={false}
+                              />
+                              <div className="p-1.5 text-center bg-white border-t">
+                                <span className="text-xs font-semibold text-gray-700">
+                                  {label}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     );
                   }
@@ -522,7 +656,9 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                       showRemoveButton={false}
                     />
                   ) : (
-                    <p className="text-xs text-muted-foreground">No images uploaded.</p>
+                    <p className="text-xs text-muted-foreground">
+                      No images uploaded.
+                    </p>
                   );
                 })()}
 
@@ -534,45 +670,69 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                         className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2 py-1 text-xs"
                       >
                         {c.title}
-                        {c.price > 0 && !isCuttingAgent && !isStitchingAgent && <span className="text-muted-foreground">₹{c.price}</span>}
+                        {c.price > 0 &&
+                          !isCuttingAgent &&
+                          !isStitchingAgent && (
+                            <span className="text-muted-foreground">
+                              ₹{c.price}
+                            </span>
+                          )}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground">No customisations recorded.</p>
+                  <p className="text-xs text-muted-foreground">
+                    No customisations recorded.
+                  </p>
                 )}
               </div>
             )}
             {showAdminActions && (
               <div className="flex gap-2 mt-3 pt-3 border-t">
-                <Button size="sm" variant="outline" onClick={() => setIsCustomizationsOpen(true)} data-testid="order-update-customizations-btn">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsCustomizationsOpen(true)}
+                  data-testid="order-update-customizations-btn"
+                >
                   Update Customisations
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setIsOptionsOpen(true)} data-testid="order-update-options-btn">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsOptionsOpen(true)}
+                  data-testid="order-update-options-btn"
+                >
                   Update Options
                 </Button>
               </div>
             )}
           </div>
 
-          {(isAdmin || isPickupCoordinator) && (detail?.address || order?.address) && (() => {
-            const address = detail?.address || order?.address;
-            return (
-              <div className="rounded-lg border p-4">
-                <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                  <MapPin className="w-4 h-4" /> Delivery Address
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {address.name || address.firstName || order.customerName || "—"} · {address.phone || order.customerPhone || "—"}
-                  <br />
-                  {address.addressLine1}
-                  {address.addressLine2 ? `, ${address.addressLine2}` : ""}
-                  <br />
-                  {address.city}, {address.state} - {address.pincode}
-                </p>
-              </div>
-            );
-          })()}
+          {(isAdmin || isPickupCoordinator) &&
+            (detail?.address || order?.address) &&
+            (() => {
+              const address = detail?.address || order?.address;
+              return (
+                <div className="rounded-lg border p-4">
+                  <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                    <MapPin className="w-4 h-4" /> Delivery Address
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {address.name ||
+                      address.firstName ||
+                      order.customerName ||
+                      "—"}{" "}
+                    · {address.phone || order.customerPhone || "—"}
+                    <br />
+                    {address.addressLine1}
+                    {address.addressLine2 ? `, ${address.addressLine2}` : ""}
+                    <br />
+                    {address.city}, {address.state} - {address.pincode}
+                  </p>
+                </div>
+              );
+            })()}
 
           {measurements && (
             <div className="rounded-lg border p-2">
@@ -583,7 +743,9 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
           {notes && (
             <div className="rounded-lg border p-4">
               <h3 className="text-sm font-semibold mb-2">Notes</h3>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{notes}</p>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {notes}
+              </p>
             </div>
           )}
         </div>
@@ -595,11 +757,20 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
               <h3 className="text-sm font-semibold mb-3">Payment Summary</h3>
               <div className="flex items-center justify-between text-sm mb-2">
                 <span className="text-muted-foreground">Order Total</span>
-                <span className="font-semibold">₹{Number(totalAmount).toLocaleString()}</span>
+                <span className="font-semibold">
+                  ₹{Number(totalAmount).toLocaleString()}
+                </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Payment Status</span>
-                <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs", paymentBadge.bg, paymentBadge.text, paymentBadge.border)}>
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs",
+                    paymentBadge.bg,
+                    paymentBadge.text,
+                    paymentBadge.border,
+                  )}
+                >
                   <PaymentIcon className="w-3 h-3" /> {paymentBadge.label}
                 </span>
               </div>
@@ -612,18 +783,25 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
               {detail?.payment?._id && (
                 <div className="flex items-center justify-between text-sm mt-2">
                   <span className="text-muted-foreground">Transaction ID</span>
-                  <span className="font-medium break-all text-right">{detail.payment._id}</span>
+                  <span className="font-medium break-all text-right">
+                    {detail.payment._id}
+                  </span>
                 </div>
               )}
             </div>
           )}
 
-          <div className="rounded-lg border p-4 space-y-4" data-testid="order-manage-panel">
+          <div
+            className="rounded-lg border p-4 space-y-4"
+            data-testid="order-manage-panel"
+          >
             <h3 className="text-sm font-semibold">Manage Order</h3>
 
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-muted-foreground">Processing State</label>
+                <label className="text-xs text-muted-foreground">
+                  Processing State
+                </label>
                 {isPickupCoordinator ? (
                   [
                     OrderProcessingState.MATERIAL_PACKED,
@@ -637,17 +815,36 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                       onValueChange={(val) => handleProcessingStateSelect(val)}
                     >
                       <SelectTrigger
-                        disabled={(!canEdit && !isPickupCoordinator) || Boolean(isReadOnlyProcessingState)}
+                        disabled={
+                          (!canEdit && !isPickupCoordinator) ||
+                          Boolean(isReadOnlyProcessingState)
+                        }
                         data-testid="order-processing-state-select"
                       >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={OrderProcessingState.MATERIAL_PACKED}>Packed / पैक</SelectItem>
-                        <SelectItem value={OrderProcessingState.READY_FOR_DISPATCH}>Out for Delivery</SelectItem>
-                        <SelectItem value={OrderProcessingState.DELIVERED_AND_PAID}>Delivered and Paid</SelectItem>
-                        <SelectItem value={OrderProcessingState.ORDER_COMPLETE}>Delivered</SelectItem>
-                        <SelectItem value={OrderProcessingState.RETURNED}>Returned for Alteration</SelectItem>
+                        <SelectItem
+                          value={OrderProcessingState.MATERIAL_PACKED}
+                        >
+                          Packed / पैक
+                        </SelectItem>
+                        <SelectItem
+                          value={OrderProcessingState.READY_FOR_DISPATCH}
+                        >
+                          Out for Delivery
+                        </SelectItem>
+                        <SelectItem
+                          value={OrderProcessingState.DELIVERED_AND_PAID}
+                        >
+                          Delivered and Paid
+                        </SelectItem>
+                        <SelectItem value={OrderProcessingState.ORDER_COMPLETE}>
+                          Delivered
+                        </SelectItem>
+                        <SelectItem value={OrderProcessingState.RETURNED}>
+                          Returned for Alteration
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   ) : (
@@ -656,21 +853,32 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                         [
                           OrderProcessingState.ORDER_PLACED,
                           OrderProcessingState.ORDER_FULFILLED,
-                        ].includes(currentProcessingState as OrderProcessingState)
+                        ].includes(
+                          currentProcessingState as OrderProcessingState,
+                        )
                           ? currentProcessingState
                           : OrderProcessingState.ORDER_PLACED
                       }
                       onValueChange={(val) => handleProcessingStateSelect(val)}
                     >
                       <SelectTrigger
-                        disabled={(!canEdit && !isPickupCoordinator) || Boolean(isReadOnlyProcessingState)}
+                        disabled={
+                          (!canEdit && !isPickupCoordinator) ||
+                          Boolean(isReadOnlyProcessingState)
+                        }
                         data-testid="order-processing-state-select"
                       >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={OrderProcessingState.ORDER_PLACED}>Order Placed</SelectItem>
-                        <SelectItem value={OrderProcessingState.ORDER_FULFILLED}>Order Fulfilled</SelectItem>
+                        <SelectItem value={OrderProcessingState.ORDER_PLACED}>
+                          Order Placed
+                        </SelectItem>
+                        <SelectItem
+                          value={OrderProcessingState.ORDER_FULFILLED}
+                        >
+                          Order Fulfilled
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   )
@@ -683,9 +891,11 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                         OrderProcessingState.MATERIAL_PACKED,
                       ].includes(currentProcessingState as OrderProcessingState)
                         ? currentProcessingState
-                        : currentProcessingState === OrderProcessingState.CUTTING_END
+                        : currentProcessingState ===
+                            OrderProcessingState.CUTTING_END
                           ? OrderProcessingState.CUTTING_END
-                          : currentProcessingState === OrderProcessingState.CUTTING_START
+                          : currentProcessingState ===
+                              OrderProcessingState.CUTTING_START
                             ? OrderProcessingState.CUTTING_START
                             : OrderProcessingState.ORDER_FULFILLED
                     }
@@ -702,20 +912,34 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                         OrderProcessingState.RETURNED,
                         OrderProcessingState.ALTERATION_START,
                         OrderProcessingState.MATERIAL_PACKED,
-                      ].includes(currentProcessingState as OrderProcessingState) ? (
+                      ].includes(
+                        currentProcessingState as OrderProcessingState,
+                      ) ? (
                         <>
-                          <SelectItem value={OrderProcessingState.RETURNED}>Returned for Alteration</SelectItem>
-                          <SelectItem value={OrderProcessingState.ALTERATION_START}>
+                          <SelectItem value={OrderProcessingState.RETURNED}>
+                            Returned for Alteration
+                          </SelectItem>
+                          <SelectItem
+                            value={OrderProcessingState.ALTERATION_START}
+                          >
                             Alteration Started / अल्टरेशन शुरू
                           </SelectItem>
-                          <SelectItem value={OrderProcessingState.MATERIAL_PACKED}>Packed / पैक</SelectItem>
+                          <SelectItem
+                            value={OrderProcessingState.MATERIAL_PACKED}
+                          >
+                            Packed / पैक
+                          </SelectItem>
                         </>
                       ) : (
                         <>
-                          <SelectItem value={OrderProcessingState.ORDER_FULFILLED}>
+                          <SelectItem
+                            value={OrderProcessingState.ORDER_FULFILLED}
+                          >
                             Order Fulfilled
                           </SelectItem>
-                          <SelectItem value={OrderProcessingState.CUTTING_START}>
+                          <SelectItem
+                            value={OrderProcessingState.CUTTING_START}
+                          >
                             Cutting Started / कटिंग शुरू
                           </SelectItem>
                           <SelectItem value={OrderProcessingState.CUTTING_END}>
@@ -728,9 +952,11 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                 ) : isStitchingAgent ? (
                   <Select
                     value={
-                      currentProcessingState === OrderProcessingState.STITCHING_END
+                      currentProcessingState ===
+                      OrderProcessingState.STITCHING_END
                         ? OrderProcessingState.STITCHING_END
-                        : currentProcessingState === OrderProcessingState.STITCHING_START
+                        : currentProcessingState ===
+                            OrderProcessingState.STITCHING_START
                           ? OrderProcessingState.STITCHING_START
                           : OrderProcessingState.CUTTING_END
                     }
@@ -763,7 +989,8 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                         OrderProcessingState.STITCHING_END,
                       ].includes(currentProcessingState as OrderProcessingState)
                         ? currentProcessingState
-                        : currentProcessingState || OrderProcessingState.MATERIAL_PACKED
+                        : currentProcessingState ||
+                          OrderProcessingState.MATERIAL_PACKED
                     }
                     onValueChange={(val) => handleProcessingStateSelect(val)}
                   >
@@ -777,8 +1004,16 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                       <SelectItem value={OrderProcessingState.STITCHING_END}>
                         {STAGE_LABELS[OrderProcessingState.STITCHING_END]}
                       </SelectItem>
-                      <SelectItem value={OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED}>
-                        {STAGE_LABELS[OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED]}
+                      <SelectItem
+                        value={
+                          OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED
+                        }
+                      >
+                        {
+                          STAGE_LABELS[
+                            OrderProcessingState.PRODUCT_VERIFIED_OR_RECTIFIED
+                          ]
+                        }
                       </SelectItem>
                       <SelectItem value={OrderProcessingState.MATERIAL_PACKED}>
                         {STAGE_LABELS[OrderProcessingState.MATERIAL_PACKED]}
@@ -787,15 +1022,23 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                   </Select>
                 ) : (
                   <Select
-                    value={currentProcessingState || OrderProcessingState.ORDER_PLACED}
+                    value={
+                      currentProcessingState ||
+                      OrderProcessingState.ORDER_PLACED
+                    }
                     onValueChange={(val) => handleProcessingStateSelect(val)}
                   >
-                    <SelectTrigger disabled={!canEdit} data-testid="order-processing-state-select">
+                    <SelectTrigger
+                      disabled={!canEdit}
+                      data-testid="order-processing-state-select"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {PROCESSING_STAGE_SEQUENCE.map((stage) => (
-                        <SelectItem key={stage} value={stage}>{STAGE_LABELS[stage]}</SelectItem>
+                        <SelectItem key={stage} value={stage}>
+                          {STAGE_LABELS[stage]}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -810,8 +1053,10 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                   cleanAltNotes !== "-" &&
                   cleanAltNotes.toUpperCase() !== "N/A";
                 const hasAltPhotos = alterationPhotos.length > 0;
-                const isReturnedState = currentProcessingState === OrderProcessingState.RETURNED;
-                const shouldShow = isReturnedState || hasAltNotes || hasAltPhotos;
+                const isReturnedState =
+                  currentProcessingState === OrderProcessingState.RETURNED;
+                const shouldShow =
+                  isReturnedState || hasAltNotes || hasAltPhotos;
 
                 if (!shouldShow) return null;
 
@@ -828,7 +1073,9 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                         className="h-7 text-xs bg-white border-amber-300 text-amber-900 hover:bg-amber-100/50"
                         onClick={() => setIsAlterationDialogOpen(true)}
                       >
-                        {hasAltNotes || hasAltPhotos ? "Edit Details" : "Add Details"}
+                        {hasAltNotes || hasAltPhotos
+                          ? "Edit Details"
+                          : "Add Details"}
                       </Button>
                     </div>
 
@@ -837,7 +1084,9 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                         {cleanAltNotes}
                       </p>
                     ) : (
-                      <p className="text-xs text-muted-foreground italic">No alteration notes added yet.</p>
+                      <p className="text-xs text-muted-foreground italic">
+                        No alteration notes added yet.
+                      </p>
                     )}
 
                     {alterationPhotos.length > 0 && (
@@ -847,7 +1096,13 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                         </span>
                         <div className="flex flex-wrap gap-2">
                           {alterationPhotos.map((url, idx) => (
-                            <a key={idx} href={url} target="_blank" rel="noreferrer" className="group relative">
+                            <a
+                              key={idx}
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="group relative"
+                            >
                               <img
                                 src={url}
                                 alt={`Alteration photo ${idx + 1}`}
@@ -862,34 +1117,52 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                 );
               })()}
 
-              {!isPickupCoordinator && !isCuttingAgent && !isStitchingAgent && !isSupport && (
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs text-muted-foreground">Order Status</label>
-                  <Select
-                    value={order.orderStatus || ""}
-                    onValueChange={(val) => onUpdateOrderStatus(order.id, val)}
-                  >
-                    <SelectTrigger disabled={!canEdit} data-testid="order-status-select">
-                      <SelectValue placeholder="Keep current" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ORDER_STATUS_EDIT_OPTIONS.map((s) => (
-                        <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              {!isPickupCoordinator &&
+                !isCuttingAgent &&
+                !isStitchingAgent &&
+                !isSupport && (
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">
+                      Order Status
+                    </label>
+                    <Select
+                      value={order.orderStatus || ""}
+                      onValueChange={(val) =>
+                        onUpdateOrderStatus(order.id, val)
+                      }
+                    >
+                      <SelectTrigger
+                        disabled={!canEdit}
+                        data-testid="order-status-select"
+                      >
+                        <SelectValue placeholder="Keep current" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ORDER_STATUS_EDIT_OPTIONS.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s.replace(/_/g, " ")}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
               {!isCuttingAgent && !isStitchingAgent && !isSupport && (
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-muted-foreground">Cutting Agent</label>
+                  <label className="text-xs text-muted-foreground">
+                    Cutting Agent
+                  </label>
                   <Select
                     value={activeCuttingAgentValue}
                     onValueChange={(val) => handleCuttingAgentChange(val)}
                   >
                     <SelectTrigger
-                      disabled={!canEdit && user?.role !== UserRole.PICKUP_COORDINATOR && user?.role !== UserRole.ADMIN}
+                      disabled={
+                        !canEdit &&
+                        user?.role !== UserRole.PICKUP_COORDINATOR &&
+                        user?.role !== UserRole.ADMIN
+                      }
                       data-testid="order-cutting-agent-select"
                     >
                       <SelectValue placeholder="Unassigned" />
@@ -900,16 +1173,20 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                         const agentId = agent._id || agent.userId || agent.id;
                         return (
                           <SelectItem key={agentId} value={agentId}>
-                            {`${agent.firstName || agent.name || ""} ${agent.lastName || ""}`.trim() || agent.email}
+                            {`${agent.firstName || agent.name || ""} ${agent.lastName || ""}`.trim() ||
+                              agent.email}
                           </SelectItem>
                         );
                       })}
                       {assignedCuttingAgentState?.agentId &&
                         !filteredCuttingAgents.some(
-                          (a: any) => (a._id || a.userId || a.id) === assignedCuttingAgentState.agentId,
+                          (a: any) =>
+                            (a._id || a.userId || a.id) ===
+                            assignedCuttingAgentState.agentId,
                         ) && (
                           <SelectItem value={assignedCuttingAgentState.agentId}>
-                            {assignedCuttingAgentState.agentName || "Assigned Agent"}
+                            {assignedCuttingAgentState.agentName ||
+                              "Assigned Agent"}
                           </SelectItem>
                         )}
                     </SelectContent>
@@ -919,12 +1196,20 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
 
               {!isPickupCoordinator && !isStitchingAgent && !isSupport && (
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-muted-foreground">Stitching Agent</label>
+                  <label className="text-xs text-muted-foreground">
+                    Stitching Agent
+                  </label>
                   <Select
                     value={activeStitchingAgentValue}
                     onValueChange={(val) => handleStitchingAgentChange(val)}
                   >
-                    <SelectTrigger disabled={(!canEdit && !isCuttingAgent) || isAssigningToStitchingAgent} data-testid="order-stitching-agent-select">
+                    <SelectTrigger
+                      disabled={
+                        (!canEdit && !isCuttingAgent) ||
+                        isAssigningToStitchingAgent
+                      }
+                      data-testid="order-stitching-agent-select"
+                    >
                       <SelectValue placeholder="Unassigned" />
                     </SelectTrigger>
                     <SelectContent>
@@ -933,7 +1218,8 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                         const agentId = agent._id || agent.userId || agent.id;
                         return (
                           <SelectItem key={agentId} value={agentId}>
-                            {`${agent.firstName || agent.name || ""} ${agent.lastName || ""}`.trim() || agent.email}
+                            {`${agent.firstName || agent.name || ""} ${agent.lastName || ""}`.trim() ||
+                              agent.email}
                           </SelectItem>
                         );
                       })}
@@ -944,20 +1230,32 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
 
               {!isCuttingAgent && !isStitchingAgent && !isSupport && (
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-muted-foreground">Pin to Top</label>
+                  <label className="text-xs text-muted-foreground">
+                    Pin to Top
+                  </label>
                   <div className="flex items-center gap-2 h-10">
                     <Switch
                       disabled={isUpdatingPin || !canEdit}
                       checked={!!order.isPinned}
                       onCheckedChange={(val) => {
-                        const pinPosition = val ? window.prompt("Enter pin position") : null;
-                        onPinOrder(order.id, val, pinPosition ? Number(pinPosition) : null);
+                        const pinPosition = val
+                          ? window.prompt("Enter pin position")
+                          : null;
+                        onPinOrder(
+                          order.id,
+                          val,
+                          pinPosition ? Number(pinPosition) : null,
+                        );
                       }}
                       data-testid="order-pin-switch"
                     />
-                    {isUpdatingPin && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {isUpdatingPin && (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    )}
                     {order.isPinned && (
-                      <span className="text-xs text-muted-foreground">#{order.pinPosition ?? "-"}</span>
+                      <span className="text-xs text-muted-foreground">
+                        #{order.pinPosition ?? "-"}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -967,7 +1265,8 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
             {!isCuttingAgent && !isStitchingAgent && !isSupport && (
               <div className="pt-2 border-t">
                 <label className="text-xs text-muted-foreground mb-2 block flex items-center gap-1">
-                  <MessageSquareText className="w-3 h-3" /> Notify Customer (SMS)
+                  <MessageSquareText className="w-3 h-3" /> Notify Customer
+                  (SMS)
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {NOTIFY_STAGES.map((stage) => (
@@ -1006,7 +1305,11 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                   onClick={() => onDuplicate(order.id)}
                   data-testid="order-duplicate-btn"
                 >
-                  {isDuplicating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Repeat className="w-4 h-4 mr-1" />}
+                  {isDuplicating ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                  ) : (
+                    <Repeat className="w-4 h-4 mr-1" />
+                  )}
                   Repeat Order
                 </Button>
                 <Button
@@ -1033,14 +1336,20 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
           data-testid="order-timeline-toggle"
         >
           Order Timeline
-          {showTimeline ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          {showTimeline ? (
+            <ChevronUp className="w-4 h-4" />
+          ) : (
+            <ChevronDown className="w-4 h-4" />
+          )}
         </button>
         {showTimeline && (
           <div className="px-2 pb-3">
             {order.timeLine?.length > 0 ? (
               <OrderTimelineView timeline={order.timeLine} />
             ) : (
-              <p className="text-sm text-muted-foreground px-2">No timeline events yet.</p>
+              <p className="text-sm text-muted-foreground px-2">
+                No timeline events yet.
+              </p>
             )}
           </div>
         )}
@@ -1066,7 +1375,10 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
       />
 
       {/* Returned for Alteration Dialog */}
-      <Dialog open={isAlterationDialogOpen} onOpenChange={setIsAlterationDialogOpen}>
+      <Dialog
+        open={isAlterationDialogOpen}
+        onOpenChange={setIsAlterationDialogOpen}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold flex items-center gap-2 text-amber-900">
@@ -1074,7 +1386,8 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
               Returned for Alteration Details
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Add alteration notes and upload photos describing what needs to be altered for this order.
+              Add alteration notes and upload photos describing what needs to be
+              altered for this order.
             </DialogDescription>
           </DialogHeader>
 
@@ -1099,8 +1412,15 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
               {alterationPhotos.length > 0 && (
                 <div className="grid grid-cols-4 gap-2 mb-2">
                   {alterationPhotos.map((url, index) => (
-                    <div key={index} className="relative group border rounded overflow-hidden h-16 bg-muted">
-                      <img src={url} alt={`Upload ${index + 1}`} className="w-full h-full object-cover" />
+                    <div
+                      key={index}
+                      className="relative group border rounded overflow-hidden h-16 bg-muted"
+                    >
+                      <img
+                        src={url}
+                        alt={`Upload ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
                       <button
                         type="button"
                         onClick={() => handleRemovePhoto(index)}
@@ -1127,7 +1447,9 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                     className="hidden"
                   />
                 </label>
-                {isUploadingPhoto && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                {isUploadingPhoto && (
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                )}
               </div>
             </div>
           </div>
