@@ -37,7 +37,6 @@ interface CheckoutFormData {
   pincode?: string;
   date?: string;
   time?: string;
-  notes?: string;
 
   advance_collected?: number;
   tax_percentage?: number;
@@ -660,12 +659,6 @@ export const CartCheckoutForm: React.FC<Partial<CartCheckoutModalProps>> = ({
                     transition={{ duration: 0 }}
                   >
                     <MessageSquare className="w-4 h-4" />
-                    <span className="text-sm font-medium">
-                      {formValues.notes ? "Edit Notes" : "Add Notes"}
-                    </span>
-                    {formValues.notes && (
-                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                    )}
                   </motion.button>
                 ) : (
                   <motion.div
@@ -676,34 +669,6 @@ export const CartCheckoutForm: React.FC<Partial<CartCheckoutModalProps>> = ({
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0 }}
                   >
-                    <div className="p-3 border-b bg-muted/50 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <MessageSquare className="w-4 h-4 text-primary" />
-                        <Label
-                          htmlFor="notes"
-                          className="font-semibold cursor-default"
-                        >
-                          Order Notes
-                        </Label>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setIsNotesExpanded(false)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="p-3">
-                      <Textarea
-                        id="notes"
-                        placeholder="Enter notes related to order..."
-                        className="min-h-[100px] resize-none focus-visible:ring-1"
-                        value={formValues.notes || ""}
-                        onChange={(e) => handleChange("notes", e.target.value)}
-                      />
-                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
