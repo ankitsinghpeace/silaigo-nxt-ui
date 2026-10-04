@@ -91,19 +91,20 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({
     };
   }, []);
 
-  const { data, isPending, refetch } = useQuery({
-    queryKey: ["role-queue", role],
-    queryFn: () =>
-      getAllOrders(
-        new URLSearchParams({
-          page: "1",
-          limit: "100",
-          sortBy: "newest",
-          sortByDeliveryDate: "1",
-        }).toString(),
-      ),
-    staleTime: 1000 * 30,
-  });
+const { data, isPending, refetch, error } = useQuery({
+  queryKey: ["role-queue", role],
+  queryFn: () =>
+    getAllOrders(
+      new URLSearchParams({
+        page: "1",
+        limit: "100",
+        sortBy: "newest",
+        sortByDeliveryDate: "1",
+      }).toString(),
+    ),
+  staleTime: 0,
+  refetchOnMount: "always",
+});
 
   // Auto-assign fulfilled orders to single cutting master if only 1 exists
   useEffect(() => {
@@ -139,7 +140,7 @@ const RoleQueueView: React.FC<RoleQueueViewProps> = ({
       (o: any) =>
         o.orderProcessingState === queueStage ||
         (role === "CUTTING" && o.orderProcessingState === "CUTTING_START") ||
-        (role === "STITCHING" && o.orderProcessingState === "STITCHING_START") ||
+        (role === "STITCHING") ||
         (role === "ALTERATION" &&
           [
             OrderProcessingState.RETURNED,
