@@ -402,47 +402,55 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
     });
   }, [teamMembersViaRole]);
 
+  const getStitchingAgentId = (agent: any): string => {
+    const id = agent?._id ?? agent?.userId ?? agent?.id;
+    return id != null ? String(id) : "";
+  };
+
+  const getOrderFromDetail = () =>
+    detail?.data?.order ?? detail?.order ?? detail?.data ?? detail ?? order;
+
+  const getAssignedStitchingId = (source: any): string => {
+    const id =
+      source?.assignedToStitchingAgentId ??
+      source?.assignedStitchingAgentId ??
+      source?.assignedStitchingAgent?._id ??
+      source?.assignedStitchingAgent?.userId ??
+      source?.assignedStitchingAgent?.id;
+
+    return id != null && id !== "" ? String(id) : "none";
+  };
+
   const [assignedStitchingAgentId, setAssignedStitchingAgentId] =
-    useState<string>(() => {
-      return (
-        order.assignedToStitchingAgentId ||
-        order.assignedStitchingAgentId ||
-        order.assignedStitchingAgent?._id ||
-        order.assignedStitchingAgent?.userId ||
-        order.assignedStitchingAgent?.id ||
-        "none"
-      );
-    });
+    React.useState<string>(() => getAssignedStitchingId(order));
 
   React.useEffect(() => {
-    const currentId =
-      order.assignedToStitchingAgentId ||
-      order.assignedStitchingAgentId ||
-      order.assignedStitchingAgent?._id ||
-      order.assignedStitchingAgent?.userId ||
-      order.assignedStitchingAgent?.id ||
-      "none";
-    setAssignedStitchingAgentId(currentId);
-  }, [
-    order.assignedToStitchingAgentId,
-    order.assignedStitchingAgentId,
-    order.assignedStitchingAgent,
-  ]);
+    const source = getOrderFromDetail();
+    setAssignedStitchingAgentId(getAssignedStitchingId(source));
+  }, [detail, order]);
 
   const activeStitchingAgentValue = React.useMemo(() => {
-    if (!assignedStitchingAgentId || assignedStitchingAgentId === "none")
+    if (!assignedStitchingAgentId || assignedStitchingAgentId === "none") {
       return "none";
+    }
+
     const exists = filteredStitchingAgents.some(
-      (a: any) => (a._id || a.userId || a.id) === assignedStitchingAgentId,
+      (agent: any) => getStitchingAgentId(agent) === assignedStitchingAgentId,
     );
+
     return exists ? assignedStitchingAgentId : "none";
   }, [assignedStitchingAgentId, filteredStitchingAgents]);
 
   const handleStitchingAgentChange = (val: string) => {
-    setAssignedStitchingAgentId(val);
-    onAssignStitchingAgent(order.id || order._id, val === "none" ? "" : val);
-  };
+    const selectedId = val || "none";
 
+    setAssignedStitchingAgentId(selectedId);
+
+    onAssignStitchingAgent(
+      String(order?.id || order?._id || detail?.order?._id || ""),
+      selectedId === "none" ? "" : selectedId,
+    );
+  };
   const {
     mutate: notifyCustomer,
     isPending: isNotifying,
@@ -1201,7 +1209,7 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                   </label>
                   <Select
                     value={activeStitchingAgentValue}
-                    onValueChange={(val) => handleStitchingAgentChange(val)}
+                    onValueChange={handleStitchingAgentChange}
                   >
                     <SelectTrigger
                       disabled={
@@ -1212,17 +1220,36 @@ const AdminOrderDetailView: React.FC<AdminOrderDetailViewProps> = ({
                     >
                       <SelectValue placeholder="Unassigned" />
                     </SelectTrigger>
+
                     <SelectContent>
                       <SelectItem value="none">Unassigned</SelectItem>
+
                       {filteredStitchingAgents.map((agent: any) => {
-                        const agentId = agent._id || agent.userId || agent.id;
+                        const agentId = getStitchingAgentId(agent);
+
+                        if (!agentId) return null;
+
                         return (
                           <SelectItem key={agentId} value={agentId}>
-                            {`${agent.firstName || agent.name || ""} ${agent.lastName || ""}`.trim() ||
-                              agent.email}
+                            {`${agent.firstName || agent.name || ""} ${
+                              agent.lastName || ""
+                            }`.trim() ||
+                              agent.email ||
+                              agentId}
                           </SelectItem>
                         );
                       })}
+
+                      {assignedStitchingAgentId !== "none" &&
+                        !filteredStitchingAgents.some(
+                          (agent: any) =>
+                            getStitchingAgentId(agent) ===
+                            assignedStitchingAgentId,
+                        ) && (
+                          <SelectItem value={assignedStitchingAgentId}>
+                            Assigned Agent ({assignedStitchingAgentId})
+                          </SelectItem>
+                        )}
                     </SelectContent>
                   </Select>
                 </div>

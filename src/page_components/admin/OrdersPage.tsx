@@ -72,7 +72,13 @@ import {
   DialogOverlay,
   DialogPortal,
 } from "@radix-ui/react-dialog";
-import { deleteOrder, getRoles, getTeamMembers, getTeamMembersViaRole, UserRole } from "@/services";
+import {
+  deleteOrder,
+  getRoles,
+  getTeamMembers,
+  getTeamMembersViaRole,
+  UserRole,
+} from "@/services";
 import OrderTimelineView from "@/components/OrderTImeLineView";
 import { json2csv } from "json-2-csv";
 import Swal from "sweetalert2";
@@ -166,7 +172,10 @@ export const PICKUP_COORDINATOR_TIMELINE_OPTIONS = [
 export const PICKUP_COORDINATOR_DELIVERY_TIMELINE_OPTIONS = [
   { value: OrderProcessingState.MATERIAL_PACKED, label: "Packed / पैक" },
   { value: OrderProcessingState.READY_FOR_DISPATCH, label: "Out for Delivery" },
-  { value: OrderProcessingState.DELIVERED_AND_PAID, label: "Delivered and Paid" },
+  {
+    value: OrderProcessingState.DELIVERED_AND_PAID,
+    label: "Delivered and Paid",
+  },
   { value: OrderProcessingState.ORDER_COMPLETE, label: "Delivered" },
   { value: OrderProcessingState.RETURNED, label: "Returned for Alteration" },
 ];
@@ -348,7 +357,9 @@ const OrdersPage = () => {
   const { user } = useAuth();
   const [orderToDelete, setOrderToDelete] = useState(null);
   const [isMeasurementModalOpen, setIsMeasurementModalOpen] = useState(false);
-  const [tab, setTab] = useState<"orders" | "pickups" | "queue" | "delivery">("orders");
+  const [tab, setTab] = useState<"orders" | "pickups" | "queue" | "delivery">(
+    "orders",
+  );
   const orderToEditMeasurement = useRef<string | null>(null);
   const [orderExistingMeasurementData, setOrderExistingMeasurementData] =
     useState({});
@@ -411,8 +422,8 @@ const OrdersPage = () => {
   }
 
   // Get active filters directly from searchParams
-  const activeFilters = SEARCH_FIELDS.filter((field) =>
-    searchParams[field.value],
+  const activeFilters = SEARCH_FIELDS.filter(
+    (field) => searchParams[field.value],
   ).map((field) => ({
     field: field.value,
     value: searchParams[field.value]!,
@@ -505,20 +516,17 @@ const OrdersPage = () => {
     },
     onSuccess: (res, orderId) => {
       //refetchOrders();
-      queryClient.setQueryData(
-        ["orders", queryString],
-        (oldData: any) => {
-          if (!oldData) {
-            return oldData;
-          }
+      queryClient.setQueryData(["orders", queryString], (oldData: any) => {
+        if (!oldData) {
+          return oldData;
+        }
 
-          const updatedData = oldData.orders.filter((order) => {
-            return order.id != orderId;
-          });
+        const updatedData = oldData.orders.filter((order) => {
+          return order.id != orderId;
+        });
 
-          return { ...oldData, orders: updatedData };
-        },
-      );
+        return { ...oldData, orders: updatedData };
+      });
 
       toast({
         title: "Order deleted",
@@ -542,7 +550,8 @@ const OrdersPage = () => {
   const rawOrders = data?.orders || [];
   const rawPinnedOrders = data?.pinnedOrderList || [];
 
-  const isSupportUser = user?.role === UserRole.SUPPORT || user?.role?.toUpperCase() === "SUPPORT";
+  const isSupportUser =
+    user?.role === UserRole.SUPPORT || user?.role?.toUpperCase() === "SUPPORT";
 
   const orders = useMemo(() => {
     if (searchParams.all_orders === "1") {
@@ -623,7 +632,8 @@ const OrdersPage = () => {
       bucket.totalAmount += order.productPrice || 0;
       if (order.paymentStatus === PaymentStatus.SUCCESS) bucket.paidCount += 1;
       else bucket.pendingPaymentCount += 1;
-      if (order.orderStatus === OrderStatus.COMPLETED) bucket.completedCount += 1;
+      if (order.orderStatus === OrderStatus.COMPLETED)
+        bucket.completedCount += 1;
       if (order.appointmentDate) {
         if (
           !bucket.nextDelivery ||
@@ -641,10 +651,18 @@ const OrdersPage = () => {
   const selectedOrder = useMemo(() => {
     if (!selectedOrderId) return null;
     let found =
-      (rawOrders || []).find((o: any) => o.id === selectedOrderId || o._id === selectedOrderId) ||
-      (rawPinnedOrders || []).find((o: any) => o.id === selectedOrderId || o._id === selectedOrderId) ||
-      (orders || []).find((o: any) => o.id === selectedOrderId || o._id === selectedOrderId) ||
-      (pinnedOrders || []).find((o: any) => o.id === selectedOrderId || o._id === selectedOrderId);
+      (rawOrders || []).find(
+        (o: any) => o.id === selectedOrderId || o._id === selectedOrderId,
+      ) ||
+      (rawPinnedOrders || []).find(
+        (o: any) => o.id === selectedOrderId || o._id === selectedOrderId,
+      ) ||
+      (orders || []).find(
+        (o: any) => o.id === selectedOrderId || o._id === selectedOrderId,
+      ) ||
+      (pinnedOrders || []).find(
+        (o: any) => o.id === selectedOrderId || o._id === selectedOrderId,
+      );
 
     if (!found) {
       const roleQueueData: any =
@@ -652,18 +670,28 @@ const OrdersPage = () => {
         queryClient.getQueryData(["role-queue", "CUTTING"]) ||
         queryClient.getQueryData(["role-queue", "STITCHING"]);
       const roleQueueOrders = roleQueueData?.orders || [];
-      found = roleQueueOrders.find((o: any) => o.id === selectedOrderId || o._id === selectedOrderId);
+      found = roleQueueOrders.find(
+        (o: any) => o.id === selectedOrderId || o._id === selectedOrderId,
+      );
     }
 
-    const detailCache: any = queryClient.getQueryData(["order-detail", selectedOrderId]);
+    const detailCache: any = queryClient.getQueryData([
+      "order-detail",
+      selectedOrderId,
+    ]);
     if (found) {
       if (detailCache) {
         const o = detailCache.order || detailCache;
         return {
           ...found,
-          orderProcessingState: o.orderProcessingState || o.processingState || found.orderProcessingState,
-          alterationNotes: o.alterationNotes ?? o.alteration_notes ?? found.alterationNotes,
-          alterationPhotos: o.alterationPhotos ?? o.alteration_photos ?? found.alterationPhotos,
+          orderProcessingState:
+            o.orderProcessingState ||
+            o.processingState ||
+            found.orderProcessingState,
+          alterationNotes:
+            o.alterationNotes ?? o.alteration_notes ?? found.alterationNotes,
+          alterationPhotos:
+            o.alterationPhotos ?? o.alteration_photos ?? found.alterationPhotos,
         };
       }
       return found;
@@ -679,7 +707,12 @@ const OrdersPage = () => {
         orderStatus: o.orderStatus || o.status,
         alterationNotes: o.alterationNotes ?? o.alteration_notes,
         alterationPhotos: o.alterationPhotos ?? o.alteration_photos,
-        customerName: o.customerName || detailCache.address?.name || (detailCache.customer ? `${detailCache.customer.firstName || ""} ${detailCache.customer.lastName || ""}`.trim() : undefined),
+        customerName:
+          o.customerName ||
+          detailCache.address?.name ||
+          (detailCache.customer
+            ? `${detailCache.customer.firstName || ""} ${detailCache.customer.lastName || ""}`.trim()
+            : undefined),
         customerPhone: o.customerPhone || detailCache.address?.phone,
         appointmentDate: o.appointmentDate || detailCache.appointment?.date,
         orderDate: o.orderDate || o.createdAt,
@@ -691,7 +724,14 @@ const OrdersPage = () => {
       _id: selectedOrderId,
       orderId: selectedOrderId,
     };
-  }, [selectedOrderId, rawOrders, rawPinnedOrders, orders, pinnedOrders, queryClient]);
+  }, [
+    selectedOrderId,
+    rawOrders,
+    rawPinnedOrders,
+    orders,
+    pinnedOrders,
+    queryClient,
+  ]);
 
   const renderOrderDetail = (order: any) => (
     <AdminOrderDetailView
@@ -710,7 +750,9 @@ const OrdersPage = () => {
       onUpdateProcessingState={(orderId, nextState, extraData) =>
         updateOrderProcessingState({ orderId, nextState, ...extraData })
       }
-      onUpdateOrderStatus={(orderId, status) => updateOrderStatus({ orderId, status })}
+      onUpdateOrderStatus={(orderId, status) =>
+        updateOrderStatus({ orderId, status })
+      }
       onPinOrder={(orderId, isPinned, pinPosition) =>
         pinOrder({ orderId, isPinned, pinPosition })
       }
@@ -742,7 +784,10 @@ const OrdersPage = () => {
         },
         details,
       );
-      toast({ title: "PDF ready", description: "Customer order summary downloaded." });
+      toast({
+        title: "PDF ready",
+        description: "Customer order summary downloaded.",
+      });
     } catch (error) {
       toast({
         title: "Couldn't generate PDF",
@@ -754,20 +799,21 @@ const OrdersPage = () => {
     }
   };
 
-
-
-
   const pageMetrics = useMemo(() => {
     const amount = (o: any) => Number(o?.customPrice || o?.productPrice || 0);
     const total = orders.reduce((s: number, o: any) => s + amount(o), 0);
     const paid = orders.filter((o: any) =>
-      String(o?.paymentStatus || "").toLowerCase().includes("paid"),
+      String(o?.paymentStatus || "")
+        .toLowerCase()
+        .includes("paid"),
     );
     const completed = orders.filter(
       (o: any) => String(o?.orderStatus || "").toLowerCase() === "completed",
     ).length;
     const customers = new Set(
-      orders.map((o: any) => o.customerPhone || o.customerEmail || o.customerName),
+      orders.map(
+        (o: any) => o.customerPhone || o.customerEmail || o.customerName,
+      ),
     ).size;
 
     return [
@@ -794,10 +840,6 @@ const OrdersPage = () => {
     ];
   }, [orders, pagination]);
 
-
-
-
-
   const { mutate: updateOrderStatus } = useMutation({
     mutationFn: ({ orderId, status }: { orderId: string; status: string }) => {
       if (!canEdit) {
@@ -810,22 +852,19 @@ const OrdersPage = () => {
     onSuccess: (res, { orderId, status }) => {
       // refetchOrders();
 
-      queryClient.setQueryData(
-        ["orders", queryString],
-        (oldData: any) => {
-          if (!oldData) {
-            return oldData;
-          }
+      queryClient.setQueryData(["orders", queryString], (oldData: any) => {
+        if (!oldData) {
+          return oldData;
+        }
 
-          const updatedData = oldData.orders.map((order) => {
-            return order.id === orderId
-              ? { ...order, orderStatus: status, timeLine: res.timeLine }
-              : order;
-          });
+        const updatedData = oldData.orders.map((order) => {
+          return order.id === orderId
+            ? { ...order, orderStatus: status, timeLine: res.timeLine }
+            : order;
+        });
 
-          return { ...oldData, orders: updatedData };
-        },
-      );
+        return { ...oldData, orders: updatedData };
+      });
       toast({
         title: "Order status updated successfully",
         description: "The order status has been updated successfully",
@@ -854,8 +893,16 @@ const OrdersPage = () => {
       notes?: string;
       alterationPhotos?: string[];
     }) => {
-      const isSupportRole = user?.role === UserRole.SUPPORT || user?.role?.toUpperCase() === "SUPPORT";
-      if (!canEdit && user?.role !== UserRole.CUTTING && user?.role !== UserRole.PICKUP_COORDINATOR && user?.role !== UserRole.ADMIN && !isSupportRole) {
+      const isSupportRole =
+        user?.role === UserRole.SUPPORT ||
+        user?.role?.toUpperCase() === "SUPPORT";
+      if (
+        !canEdit &&
+        user?.role !== UserRole.CUTTING &&
+        user?.role !== UserRole.PICKUP_COORDINATOR &&
+        user?.role !== UserRole.ADMIN &&
+        !isSupportRole
+      ) {
         return Promise.reject(
           new Error("You don't have permission to update order status"),
         );
@@ -889,7 +936,10 @@ const OrdersPage = () => {
           return {
             ...oldData,
             ...updatedOrder,
-            order: { ...(oldData.order || {}), ...(updatedOrder.order || updatedOrder) },
+            order: {
+              ...(oldData.order || {}),
+              ...(updatedOrder.order || updatedOrder),
+            },
           };
         });
       }
@@ -951,22 +1001,19 @@ const OrdersPage = () => {
       },
 
       onSuccess: (res) => {
-        queryClient.setQueryData(
-          ["orders", queryString],
-          (oldData: any) => {
-            if (!oldData) {
-              return oldData;
-            }
+        queryClient.setQueryData(["orders", queryString], (oldData: any) => {
+          if (!oldData) {
+            return oldData;
+          }
 
-            const updatedData = oldData.orders.map((order) => {
-              return order.id === orderToEditMeasurement.current
-                ? { ...order, measurements: res.measurements }
-                : order;
-            });
+          const updatedData = oldData.orders.map((order) => {
+            return order.id === orderToEditMeasurement.current
+              ? { ...order, measurements: res.measurements }
+              : order;
+          });
 
-            return { ...oldData, orders: updatedData };
-          },
-        );
+          return { ...oldData, orders: updatedData };
+        });
         setIsMeasurementModalOpen(false);
         toast({
           title: "Order measurements updated successfully",
@@ -984,7 +1031,9 @@ const OrdersPage = () => {
       retry: false,
     });
 
-  const handleTabChange = (tab: "orders" | "pickups" | "queue" | "delivery") => {
+  const handleTabChange = (
+    tab: "orders" | "pickups" | "queue" | "delivery",
+  ) => {
     if (tab === "orders") {
       const newQuery = { ...router.query };
       delete newQuery.all_orders;
@@ -1121,23 +1170,20 @@ const OrdersPage = () => {
       return addToPinnedOrders(orderId, { isPinned, pinPosition });
     },
     onSuccess: (res, { orderId, isPinned, pinPosition }) => {
-      queryClient.setQueryData(
-        ["orders", queryString],
-        (oldData: any) => {
-          refetchOrders();
-          if (!oldData) {
-            return oldData;
-          }
+      queryClient.setQueryData(["orders", queryString], (oldData: any) => {
+        refetchOrders();
+        if (!oldData) {
+          return oldData;
+        }
 
-          const updatedData = oldData.orders.map((order: any) => {
-            return order.id === orderId
-              ? { ...order, isPinned, pinPosition }
-              : order;
-          });
+        const updatedData = oldData.orders.map((order: any) => {
+          return order.id === orderId
+            ? { ...order, isPinned, pinPosition }
+            : order;
+        });
 
-          return { ...oldData, orders: updatedData };
-        },
-      );
+        return { ...oldData, orders: updatedData };
+      });
       toast({
         title: "Order rank updated successfully",
         description: "The order rank has been updated successfully",
@@ -1173,7 +1219,9 @@ const OrdersPage = () => {
     queryFn: async () => {
       try {
         const res = await getTeamMembersViaRole(UserRole.CUTTING);
-        const list = Array.isArray(res) ? res : res?.data || res?.users || res?.members || [];
+        const list = Array.isArray(res)
+          ? res
+          : res?.data || res?.users || res?.members || [];
         if (Array.isArray(list) && list.length > 0) {
           return list;
         }
@@ -1183,7 +1231,10 @@ const OrdersPage = () => {
         const allMembersRes = await getTeamMembers();
         const allMembers = Array.isArray(allMembersRes)
           ? allMembersRes
-          : allMembersRes?.data || allMembersRes?.users || allMembersRes?.teamMembers || [];
+          : allMembersRes?.data ||
+            allMembersRes?.users ||
+            allMembersRes?.teamMembers ||
+            [];
 
         if (Array.isArray(allMembers)) {
           return allMembers.filter((m: any) => {
@@ -1218,7 +1269,11 @@ const OrdersPage = () => {
       orderId: string;
       agentId: string;
     }) => {
-      if (!canEdit && user?.role !== UserRole.CUTTING && user?.role !== UserRole.ADMIN) {
+      if (
+        !canEdit &&
+        user?.role !== UserRole.CUTTING &&
+        user?.role !== UserRole.ADMIN
+      ) {
         return Promise.reject(new Error("You don't have permission to update"));
       }
       return assignStitchingAgent(orderId, { agentId });
@@ -1228,31 +1283,28 @@ const OrdersPage = () => {
         (a: any) => (a._id || a.userId || a.id) === agentId,
       );
 
-      queryClient.setQueryData(
-        ["orders", queryString],
-        (oldData: any) => {
-          if (!oldData) {
-            return oldData;
-          }
+      queryClient.setQueryData(["orders", queryString], (oldData: any) => {
+        if (!oldData) {
+          return oldData;
+        }
 
-          const updatedData = oldData.orders.map((order: any) => {
-            return order.id === orderId
-              ? {
-                  ...order,
-                  assignedToStitchingAgentId: agentId,
-                  assignedStitchingAgentId: agentId,
-                  assignedStitchingAgent: agentObj || {
-                    _id: agentId,
-                    id: agentId,
-                    userId: agentId,
-                  },
-                }
-              : order;
-          });
+        const updatedData = oldData.orders.map((order: any) => {
+          return order.id === orderId
+            ? {
+                ...order,
+                assignedToStitchingAgentId: agentId,
+                assignedStitchingAgentId: agentId,
+                assignedStitchingAgent: agentObj || {
+                  _id: agentId,
+                  id: agentId,
+                  userId: agentId,
+                },
+              }
+            : order;
+        });
 
-          return { ...oldData, orders: updatedData };
-        },
-      );
+        return { ...oldData, orders: updatedData };
+      });
       toast({
         title: "Stitching agent assigned successfully",
         variant: "default",
@@ -1315,7 +1367,8 @@ const OrdersPage = () => {
               onClick={exportAllOrders}
               disabled={isExporting}
             >
-              Export CSV {isExporting && <Loader2 className="animate-spin ml-1 h-4 w-4" />}
+              Export CSV{" "}
+              {isExporting && <Loader2 className="animate-spin ml-1 h-4 w-4" />}
             </Button>
             <Link href={"/admin/create-order"}>
               <Button type="button">Create New Order</Button>
@@ -1326,7 +1379,8 @@ const OrdersPage = () => {
               variant="outline"
               onClick={() => refetchOrders()}
             >
-              Refresh {isPending && <Loader2 className="animate-spin ml-1 h-4 w-4" />}
+              Refresh{" "}
+              {isPending && <Loader2 className="animate-spin ml-1 h-4 w-4" />}
             </Button>
           </div>
         </div>
@@ -1356,7 +1410,6 @@ const OrdersPage = () => {
         <div className="p-5 border rounded-xl bg-white/70 backdrop-blur-sm shadow-sm">
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap gap-4 mb-2 items-end">
-
               <div className="flex flex-col">
                 <label className="text-xs text-muted-foreground mb-1">
                   Order Status
@@ -1368,7 +1421,10 @@ const OrdersPage = () => {
                       const newQuery = { ...router.query };
                       delete newQuery.orderStatus;
                       newQuery.page = "1";
-                      router.push({ pathname: router.pathname, query: newQuery });
+                      router.push({
+                        pathname: router.pathname,
+                        query: newQuery,
+                      });
                     } else {
                       setSearchParams({ orderStatus: val, page: "1" });
                     }
@@ -1443,10 +1499,7 @@ const OrdersPage = () => {
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {searchParams.startDate
-                        ? format(
-                          new Date(searchParams.startDate),
-                          "PPP",
-                        )
+                        ? format(new Date(searchParams.startDate), "PPP")
                         : "Pick a date"}
                     </Button>
                   </PopoverTrigger>
@@ -1473,7 +1526,10 @@ const OrdersPage = () => {
                           const newQuery = { ...router.query };
                           delete newQuery.startDate;
                           newQuery.page = "1";
-                          router.push({ pathname: router.pathname, query: newQuery });
+                          router.push({
+                            pathname: router.pathname,
+                            query: newQuery,
+                          });
                         }
                       }}
                       initialFocus
@@ -1521,7 +1577,10 @@ const OrdersPage = () => {
                           const newQuery = { ...router.query };
                           delete newQuery.endDate;
                           newQuery.page = "1";
-                          router.push({ pathname: router.pathname, query: newQuery });
+                          router.push({
+                            pathname: router.pathname,
+                            query: newQuery,
+                          });
                         }
                       }}
                       initialFocus
@@ -1542,10 +1601,7 @@ const OrdersPage = () => {
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {searchParams.orderDate
-                        ? format(
-                          new Date(searchParams.orderDate),
-                          "PPP",
-                        )
+                        ? format(new Date(searchParams.orderDate), "PPP")
                         : "Pick a date"}
                     </Button>
                   </PopoverTrigger>
@@ -1572,7 +1628,10 @@ const OrdersPage = () => {
                           const newQuery = { ...router.query };
                           delete newQuery.orderDate;
                           newQuery.page = "1";
-                          router.push({ pathname: router.pathname, query: newQuery });
+                          router.push({
+                            pathname: router.pathname,
+                            query: newQuery,
+                          });
                         }
                       }}
                       initialFocus
@@ -1593,10 +1652,7 @@ const OrdersPage = () => {
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {searchParams.appointmentDate
-                        ? format(
-                          new Date(searchParams.appointmentDate),
-                          "PPP",
-                        )
+                        ? format(new Date(searchParams.appointmentDate), "PPP")
                         : "Pick a date"}
                     </Button>
                   </PopoverTrigger>
@@ -1623,7 +1679,10 @@ const OrdersPage = () => {
                           const newQuery = { ...router.query };
                           delete newQuery.appointmentDate;
                           newQuery.page = "1";
-                          router.push({ pathname: router.pathname, query: newQuery });
+                          router.push({
+                            pathname: router.pathname,
+                            query: newQuery,
+                          });
                         }
                       }}
                       initialFocus
@@ -1647,7 +1706,6 @@ const OrdersPage = () => {
                   }}
                 />
               </div>
-
             </div>
 
             <div className="flex gap-2 w-full flex-col md:flex-row">
@@ -1666,9 +1724,10 @@ const OrdersPage = () => {
 
               <input
                 className="flex-1 border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder={`Enter ${SEARCH_FIELDS.find((f) => f.value === searchField)?.label ||
+                placeholder={`Enter ${
+                  SEARCH_FIELDS.find((f) => f.value === searchField)?.label ||
                   "value"
-                  }...`}
+                }...`}
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
                 onKeyDown={(e) => {
@@ -1759,50 +1818,54 @@ const OrdersPage = () => {
           className="w-full mb-4"
         >
           <TabsList className="border-b border-gray-200 bg-transparent p-0 h-auto">
-            {user?.role !== UserRole.CUTTING && user?.role !== UserRole.STITCHING && (
+            {user?.role !== UserRole.CUTTING &&
+              user?.role !== UserRole.STITCHING && (
+                <TabsTrigger
+                  value="orders"
+                  className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
+                  onClick={() => {
+                    const newQuery = { ...router.query };
+                    delete newQuery.all_orders;
+                    router.push({ pathname: router.pathname, query: newQuery });
+                  }}
+                >
+                  Orders
+                </TabsTrigger>
+              )}
+            {(user?.role === UserRole.ADMIN ||
+              user?.role === UserRole.PICKUP_COORDINATOR) && (
               <TabsTrigger
-                value="orders"
+                value="pickups"
                 className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
-                onClick={() => {
-                  const newQuery = { ...router.query };
-                  delete newQuery.all_orders;
-                  router.push({ pathname: router.pathname, query: newQuery });
-                }}
               >
-                Orders
+                Pickups
               </TabsTrigger>
             )}
             {(user?.role === UserRole.ADMIN ||
               user?.role === UserRole.PICKUP_COORDINATOR) && (
-                <TabsTrigger
-                  value="pickups"
-                  className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
-                >
-                  Pickups
-                </TabsTrigger>
-              )}
-            {(user?.role === UserRole.ADMIN ||
-              user?.role === UserRole.PICKUP_COORDINATOR) && (
-                <TabsTrigger
-                  value="delivery"
-                  className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
-                  data-testid="tab-trigger-delivery"
-                >
-                  Delivery
-                </TabsTrigger>
-              )}
+              <TabsTrigger
+                value="delivery"
+                className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
+                data-testid="tab-trigger-delivery"
+              >
+                Delivery
+              </TabsTrigger>
+            )}
             {(user?.role === UserRole.ADMIN ||
               user?.role === UserRole.CUTTING ||
               user?.role === UserRole.STITCHING) && (
-                <TabsTrigger
-                  value="queue"
-                  className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
-                  data-testid="tab-trigger-queue"
-                >
-                  {user?.role === UserRole.STITCHING ? "Stitching Queue" : "Cutting Queue"}
-                </TabsTrigger>
-              )}
-            {(user?.role === UserRole.ADMIN || user?.role === UserRole.CUTTING) && (
+              <TabsTrigger
+                value="queue"
+                className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
+                data-testid="tab-trigger-queue"
+              >
+                {user?.role === UserRole.STITCHING
+                  ? "Stitching Queue"
+                  : "Cutting Queue"}
+              </TabsTrigger>
+            )}
+            {(user?.role === UserRole.ADMIN ||
+              user?.role === UserRole.CUTTING) && (
               <TabsTrigger
                 value="alteration"
                 className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
@@ -1811,7 +1874,8 @@ const OrdersPage = () => {
                 Alteration
               </TabsTrigger>
             )}
-            {user?.role === UserRole.CUTTING || user?.role === UserRole.STITCHING ? (
+            {user?.role === UserRole.CUTTING ||
+            user?.role === UserRole.STITCHING ? (
               <TabsTrigger
                 value="orders"
                 className="px-4 py-2 text-base font-semibold text-gray-600 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary bg-transparent rounded-none shadow-none focus-visible:ring-0 focus-visible:outline-none"
@@ -1850,266 +1914,268 @@ const OrdersPage = () => {
                   {(user.role === UserRole.ADMIN ||
                     user.role === UserRole.CUTTING ||
                     user.role === UserRole.STITCHING) && (
-                      <>
-                        <h3 className="md:text-center text-3xl p-2">
-                          Pinned Orders
-                        </h3>
-                        <Table className="">
-                          <TableCaption className="text-left caption-top">
-                            Scroll right/left to see all columns
-                          </TableCaption>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Pin position</TableHead>
-                              <TableHead>Order ID</TableHead>
-                              <TableHead>Customer Name</TableHead>
-                              <TableHead>Customer Phone</TableHead>
-                              <TableHead>Order Status</TableHead>
-                              <TableHead>Product Name</TableHead>
-                              <TableHead>Delivery Date</TableHead>
-                              <TableHead>Order Date</TableHead>
-                              {!isCuttingOrStitching && (
-                                <TableHead>Custom Price</TableHead>
-                              )}
-                              <TableHead>Action</TableHead>
-                              {user.role != UserRole.ADMIN && (
-                                <TableHead>Order TimeLine</TableHead>
-                              )}
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {pinnedOrders?.length === 0 && (
-                              <TableRow>
-                                <TableCell
-                                  className="font-medium align-top text-center"
-                                  colSpan={10}
-                                >
-                                  No pinned orders !!
-                                </TableCell>
-                              </TableRow>
+                    <>
+                      <h3 className="md:text-center text-3xl p-2">
+                        Pinned Orders
+                      </h3>
+                      <Table className="">
+                        <TableCaption className="text-left caption-top">
+                          Scroll right/left to see all columns
+                        </TableCaption>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Pin position</TableHead>
+                            <TableHead>Order ID</TableHead>
+                            <TableHead>Customer Name</TableHead>
+                            <TableHead>Customer Phone</TableHead>
+                            <TableHead>Order Status</TableHead>
+                            <TableHead>Product Name</TableHead>
+                            <TableHead>Delivery Date</TableHead>
+                            <TableHead>Order Date</TableHead>
+                            {!isCuttingOrStitching && (
+                              <TableHead>Custom Price</TableHead>
                             )}
-                            {pinnedOrders?.map((order: any) => (
-                              <React.Fragment key={`pinned-${order.id}`}>
-                                <TableRow
-                                  className={cn(
-                                    "border-b-0",
-                                    order.isPinned &&
+                            <TableHead>Action</TableHead>
+                            {user.role != UserRole.ADMIN && (
+                              <TableHead>Order TimeLine</TableHead>
+                            )}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pinnedOrders?.length === 0 && (
+                            <TableRow>
+                              <TableCell
+                                className="font-medium align-top text-center"
+                                colSpan={10}
+                              >
+                                No pinned orders !!
+                              </TableCell>
+                            </TableRow>
+                          )}
+                          {pinnedOrders?.map((order: any) => (
+                            <React.Fragment key={`pinned-${order.id}`}>
+                              <TableRow
+                                className={cn(
+                                  "border-b-0",
+                                  order.isPinned &&
                                     "bg-teal-100/50 opacity-85 hover:bg-teal-200",
+                                )}
+                              >
+                                <TableCell className="font-medium align-top">
+                                  {order.pinPosition}
+                                </TableCell>
+                                <TableCell className="font-mono text-sm align-top">
+                                  <button
+                                    type="button"
+                                    onClick={() => openOrderModal(order.id)}
+                                    className="inline-flex items-center gap-1 underline text-blue-500 hover:text-blue-700"
+                                  >
+                                    {order.orderId}
+                                  </button>
+                                </TableCell>
+                                <TableCell className="font-medium align-top">
+                                  {order.customerName}
+                                </TableCell>
+                                <TableCell className="align-top">
+                                  {order.customerPhone}
+                                </TableCell>
+                                <TableCell className="align-top capitalize">
+                                  {order.orderProcessingState.replaceAll(
+                                    "_",
+                                    " ",
                                   )}
-                                >
-                                  <TableCell className="font-medium align-top">
-                                    {order.pinPosition}
-                                  </TableCell>
-                                  <TableCell className="font-mono text-sm align-top">
-                                    <button
-                                      type="button"
-                                      onClick={() => openOrderModal(order.id)}
-                                      className="inline-flex items-center gap-1 underline text-blue-500 hover:text-blue-700"
+                                  {(user.role === UserRole.ADMIN ||
+                                    user.role ===
+                                      UserRole.PICKUP_COORDINATOR) && (
+                                    <Select
+                                      value={order.orderProcessingState}
+                                      onValueChange={(val) =>
+                                        updateOrderProcessingState({
+                                          orderId: order.id, // use hex id for updating
+                                          nextState: val,
+                                        })
+                                      }
                                     >
-                                      {order.orderId}
-                                    </button>
-
-                                  </TableCell>
-                                  <TableCell className="font-medium align-top">
-                                    {order.customerName}
-                                  </TableCell>
-                                  <TableCell className="align-top">
-                                    {order.customerPhone}
-                                  </TableCell>
-                                  <TableCell className="align-top capitalize">
-                                    {order.orderProcessingState.replaceAll(
-                                      "_",
-                                      " ",
-                                    )}
-                                    {(user.role === UserRole.ADMIN ||
-                                      user.role === UserRole.PICKUP_COORDINATOR) && (
-                                      <Select
-                                        value={order.orderProcessingState}
-                                        onValueChange={(val) =>
-                                          updateOrderProcessingState({
-                                            orderId: order.id, // use hex id for updating
-                                            nextState: val,
-                                          })
-                                        }
+                                      <SelectTrigger
+                                        className="w-max"
+                                        disabled={!canEdit}
                                       >
-                                        <SelectTrigger
-                                          className="w-max"
-                                          disabled={!canEdit}
-                                        >
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent className="w-max">
-                                          {(user.role === UserRole.ADMIN
-                                            ? ORDER_TIMELINE_OPTIONS
-                                            : [
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="w-max">
+                                        {(user.role === UserRole.ADMIN
+                                          ? ORDER_TIMELINE_OPTIONS
+                                          : [
                                                 OrderProcessingState.MATERIAL_PACKED,
                                                 OrderProcessingState.READY_FOR_DISPATCH,
                                                 OrderProcessingState.DELIVERED_AND_PAID,
                                                 OrderProcessingState.ORDER_COMPLETE,
                                                 OrderProcessingState.RETURNED,
-                                              ].includes(order.orderProcessingState)
-                                              ? PICKUP_COORDINATOR_DELIVERY_TIMELINE_OPTIONS
-                                              : PICKUP_COORDINATOR_TIMELINE_OPTIONS
-                                          ).map((opt, i) => (
-                                            <SelectItem
-                                              key={i}
-                                              value={opt.value}
-                                              className="cursor-pointer w-max"
-                                            >
-                                              {opt.label}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="align-top">
-                                    {order.productName}
-                                  </TableCell>
-                                  <TableCell className="text-sm align-top">
-                                    <div>
-                                      <div className="font-medium">
-                                        {!isNaN(
-                                          new Date(
-                                            order.appointmentDate,
-                                          ).getTime(),
-                                        )
-                                          ? format(
+                                              ].includes(
+                                                order.orderProcessingState,
+                                              )
+                                            ? PICKUP_COORDINATOR_DELIVERY_TIMELINE_OPTIONS
+                                            : PICKUP_COORDINATOR_TIMELINE_OPTIONS
+                                        ).map((opt, i) => (
+                                          <SelectItem
+                                            key={i}
+                                            value={opt.value}
+                                            className="cursor-pointer w-max"
+                                          >
+                                            {opt.label}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                </TableCell>
+                                <TableCell className="align-top">
+                                  {order.productName}
+                                </TableCell>
+                                <TableCell className="text-sm align-top">
+                                  <div>
+                                    <div className="font-medium">
+                                      {!isNaN(
+                                        new Date(
+                                          order.appointmentDate,
+                                        ).getTime(),
+                                      )
+                                        ? format(
                                             new Date(order.appointmentDate),
                                             "MMM dd, yyyy",
                                           )
-                                          : "N/A"}
+                                        : "N/A"}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {order.appointmentTime}
+                                    </div>
+                                  </div>
+                                </TableCell>
+
+                                <TableCell className="text-sm align-top">
+                                  {order.orderDate ? (
+                                    <div>
+                                      <div className="font-medium">
+                                        {format(
+                                          new Date(order.orderDate),
+                                          "MMM dd, yyyy",
+                                        )}
                                       </div>
                                       <div className="text-xs text-muted-foreground">
-                                        {order.appointmentTime}
+                                        {format(
+                                          new Date(order.orderDate),
+                                          "hh:mm a",
+                                        )}
                                       </div>
                                     </div>
-                                  </TableCell>
-
-                                  <TableCell className="text-sm align-top">
-                                    {order.orderDate ? (
-                                      <div>
-                                        <div className="font-medium">
-                                          {format(
-                                            new Date(order.orderDate),
-                                            "MMM dd, yyyy",
-                                          )}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">
-                                          {format(
-                                            new Date(order.orderDate),
-                                            "hh:mm a",
-                                          )}
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      "N/A"
-                                    )}
-                                  </TableCell>
-
-                                  {!isCuttingOrStitching && (
-                                    <TableCell className="align-top">
-                                      Rs.{" "}
-                                      {order.customPrice
-                                        ? order.customPrice
-                                        : order.productPrice}
-                                    </TableCell>
+                                  ) : (
+                                    "N/A"
                                   )}
+                                </TableCell>
 
-                                  <TableCell className="flex gap-2 align-top">
-                                    {user.role === UserRole.ADMIN && (
-                                      <Button
-                                        title="delete order"
-                                        variant="outline"
-                                        color="error"
-                                        onClick={() => openConfirm(order.id)} // Pass order id here
-                                      >
-                                        <Trash />
-                                      </Button>
-                                    )}
+                                {!isCuttingOrStitching && (
+                                  <TableCell className="align-top">
+                                    Rs.{" "}
+                                    {order.customPrice
+                                      ? order.customPrice
+                                      : order.productPrice}
+                                  </TableCell>
+                                )}
+
+                                <TableCell className="flex gap-2 align-top">
+                                  {user.role === UserRole.ADMIN && (
                                     <Button
-                                      title="add/edit measurements"
+                                      title="delete order"
+                                      variant="outline"
+                                      color="error"
+                                      onClick={() => openConfirm(order.id)} // Pass order id here
+                                    >
+                                      <Trash />
+                                    </Button>
+                                  )}
+                                  <Button
+                                    title="add/edit measurements"
+                                    variant="outline"
+                                    color="error"
+                                    onClick={() => {
+                                      setOrderExistingMeasurementData(
+                                        order.measurements,
+                                      );
+                                      orderToEditMeasurement.current = order.id;
+                                      setIsMeasurementModalOpen(true);
+                                    }}
+                                  >
+                                    <RulerIcon />
+                                  </Button>
+                                  {user.role === UserRole.ADMIN && (
+                                    <Button
+                                      title="Repeat/copy order"
                                       variant="outline"
                                       color="error"
                                       onClick={() => {
-                                        setOrderExistingMeasurementData(
-                                          order.measurements,
-                                        );
-                                        orderToEditMeasurement.current = order.id;
-                                        setIsMeasurementModalOpen(true);
+                                        duplicateOrderMutation(order.id);
                                       }}
+                                      disabled={isCopyingOrder}
                                     >
-                                      <RulerIcon />
+                                      {isCopyingOrder ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                      ) : (
+                                        <Repeat />
+                                      )}
                                     </Button>
-                                    {user.role === UserRole.ADMIN && (
-                                      <Button
-                                        title="Repeat/copy order"
-                                        variant="outline"
-                                        color="error"
-                                        onClick={() => {
-                                          duplicateOrderMutation(order.id);
-                                        }}
-                                        disabled={isCopyingOrder}
-                                      >
-                                        {isCopyingOrder ? (
-                                          <Loader2 className="w-4 h-4 animate-spin" />
-                                        ) : (
-                                          <Repeat />
-                                        )}
-                                      </Button>
-                                    )}
-
-                                    {user.role === UserRole.ADMIN && (
-                                      <div>
-                                        <label
-                                          className="text-sm"
-                                          htmlFor="pinOrder"
-                                        >
-                                          Pin order
-                                        </label>
-                                        <Switch
-                                          disabled={isUpdatingPin}
-                                          id="pinOrder"
-                                          checked={order.isPinned}
-                                          onCheckedChange={(val) => {
-                                            const pinPosition =
-                                              window.prompt("Enter pin position");
-                                            pinOrder({
-                                              orderId: order.id,
-                                              pinPosition: Number(pinPosition),
-                                              isPinned: val,
-                                            });
-                                          }}
-                                        />
-                                        {isUpdatingPin && (
-                                          <Loader2 className="w-4 h-4 animate-spin" />
-                                        )}
-                                      </div>
-                                    )}
-                                  </TableCell>
-
-                                  {user.role != UserRole.ADMIN && (
-                                    <TableCell>
-                                      <EventsOptions orderId={order.id} />
-                                    </TableCell>
                                   )}
-                                </TableRow>
-                                <TableRow>
-                                  <TableCell
-                                    colSpan={user.role != UserRole.ADMIN ? 10 : 9}
-                                    className="p-0"
-                                  >
-                                    <OrderTimelineView
-                                      timeline={order?.timeLine || []}
-                                    />
+
+                                  {user.role === UserRole.ADMIN && (
+                                    <div>
+                                      <label
+                                        className="text-sm"
+                                        htmlFor="pinOrder"
+                                      >
+                                        Pin order
+                                      </label>
+                                      <Switch
+                                        disabled={isUpdatingPin}
+                                        id="pinOrder"
+                                        checked={order.isPinned}
+                                        onCheckedChange={(val) => {
+                                          const pinPosition =
+                                            window.prompt("Enter pin position");
+                                          pinOrder({
+                                            orderId: order.id,
+                                            pinPosition: Number(pinPosition),
+                                            isPinned: val,
+                                          });
+                                        }}
+                                      />
+                                      {isUpdatingPin && (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                      )}
+                                    </div>
+                                  )}
+                                </TableCell>
+
+                                {user.role != UserRole.ADMIN && (
+                                  <TableCell>
+                                    <EventsOptions orderId={order.id} />
                                   </TableCell>
-                                </TableRow>
-                              </React.Fragment>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </>
-                    )}
+                                )}
+                              </TableRow>
+                              <TableRow>
+                                <TableCell
+                                  colSpan={user.role != UserRole.ADMIN ? 10 : 9}
+                                  className="p-0"
+                                >
+                                  <OrderTimelineView
+                                    timeline={order?.timeLine || []}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            </React.Fragment>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </>
+                  )}
 
                   <h3 className="text-xl font-semibold p-2">Orders List</h3>
 
@@ -2142,9 +2208,13 @@ const OrdersPage = () => {
                                   <div className="col-span-12 md:col-span-3 flex items-center gap-3 min-w-0">
                                     <button
                                       type="button"
-                                      aria-label={isOpen ? "Collapse" : "Expand"}
+                                      aria-label={
+                                        isOpen ? "Collapse" : "Expand"
+                                      }
                                       onClick={() =>
-                                        toggleCustomerExpanded(customer.customerId)
+                                        toggleCustomerExpanded(
+                                          customer.customerId,
+                                        )
                                       }
                                       className="h-7 w-7 shrink-0 rounded-md border flex items-center justify-center text-muted-foreground hover:bg-muted"
                                     >
@@ -2181,11 +2251,13 @@ const OrdersPage = () => {
 
                                   <div className="col-span-4 md:col-span-2 text-sm">
                                     {customer.nextDelivery &&
-                                      !isNaN(new Date(customer.nextDelivery).getTime())
+                                    !isNaN(
+                                      new Date(customer.nextDelivery).getTime(),
+                                    )
                                       ? format(
-                                        new Date(customer.nextDelivery),
-                                        "dd MMM yyyy",
-                                      )
+                                          new Date(customer.nextDelivery),
+                                          "dd MMM yyyy",
+                                        )
                                       : "N/A"}
                                   </div>
 
@@ -2206,18 +2278,19 @@ const OrdersPage = () => {
                                       <div
                                         className="h-full bg-primary"
                                         style={{
-                                          width: `${customer.totalItems
-                                            ? (customer.completedCount /
-                                              customer.totalItems) *
-                                            100
-                                            : 0
-                                            }%`,
+                                          width: `${
+                                            customer.totalItems
+                                              ? (customer.completedCount /
+                                                  customer.totalItems) *
+                                                100
+                                              : 0
+                                          }%`,
                                         }}
                                       />
                                     </div>
                                     <div className="text-[11px] text-muted-foreground mt-1">
-                                      {customer.completedCount}/{customer.totalItems}{" "}
-                                      completed
+                                      {customer.completedCount}/
+                                      {customer.totalItems} completed
                                     </div>
                                   </div>
 
@@ -2246,7 +2319,9 @@ const OrdersPage = () => {
                                           key={order.id}
                                           role="button"
                                           tabIndex={0}
-                                          onClick={() => openOrderModal(order.id)}
+                                          onClick={() =>
+                                            openOrderModal(order.id)
+                                          }
                                           onKeyDown={(e) => {
                                             if (e.key === "Enter")
                                               openOrderModal(order.id);
@@ -2266,13 +2341,17 @@ const OrdersPage = () => {
                                               Delivery:{" "}
                                             </span>
                                             {order.appointmentDate &&
-                                              !isNaN(
-                                                new Date(order.appointmentDate).getTime(),
-                                              )
+                                            !isNaN(
+                                              new Date(
+                                                order.appointmentDate,
+                                              ).getTime(),
+                                            )
                                               ? format(
-                                                new Date(order.appointmentDate),
-                                                "dd MMM yyyy",
-                                              )
+                                                  new Date(
+                                                    order.appointmentDate,
+                                                  ),
+                                                  "dd MMM yyyy",
+                                                )
                                               : "N/A"}
                                           </div>
                                           <div className="col-span-6 md:col-span-2">
@@ -2322,7 +2401,6 @@ const OrdersPage = () => {
                         )}
                       </div>
                     </div>
-
                   ) : (
                     // Table View
                     <>
@@ -2340,7 +2418,9 @@ const OrdersPage = () => {
                         <Select
                           value={bulkStatus}
                           onValueChange={setBulkStatus}
-                          disabled={selectedOrderIds.length === 0 || isBulkUpdating}
+                          disabled={
+                            selectedOrderIds.length === 0 || isBulkUpdating
+                          }
                         >
                           <SelectTrigger className="w-48">
                             <SelectValue placeholder="Bulk Update Status" />
@@ -2408,9 +2488,14 @@ const OrdersPage = () => {
                                 <TableCell>
                                   <input
                                     type="checkbox"
-                                    checked={selectedOrderIds.includes(order.id)}
+                                    checked={selectedOrderIds.includes(
+                                      order.id,
+                                    )}
                                     onChange={(e) =>
-                                      handleSelectRow(order.id, e.target.checked)
+                                      handleSelectRow(
+                                        order.id,
+                                        e.target.checked,
+                                      )
                                     }
                                   />
                                 </TableCell>
@@ -2422,7 +2507,6 @@ const OrdersPage = () => {
                                   >
                                     {order.orderId}
                                   </button>
-
                                 </TableCell>
                                 <TableCell className="font-medium align-top">
                                   {order.customerName}
@@ -2431,7 +2515,10 @@ const OrdersPage = () => {
                                   {order.customerPhone}
                                 </TableCell>
                                 <TableCell className="align-top capitalize">
-                                  {order.orderProcessingState.replaceAll("_", " ")}
+                                  {order.orderProcessingState.replaceAll(
+                                    "_",
+                                    " ",
+                                  )}
                                   {user.role === UserRole.ADMIN && (
                                     <Select
                                       value={order.orderProcessingState}
@@ -2449,15 +2536,17 @@ const OrdersPage = () => {
                                         <SelectValue />
                                       </SelectTrigger>
                                       <SelectContent className="w-max">
-                                        {ORDER_TIMELINE_OPTIONS.map((opt, i) => (
-                                          <SelectItem
-                                            key={i}
-                                            value={opt.value}
-                                            className="cursor-pointer w-max"
-                                          >
-                                            {opt.label}
-                                          </SelectItem>
-                                        ))}
+                                        {ORDER_TIMELINE_OPTIONS.map(
+                                          (opt, i) => (
+                                            <SelectItem
+                                              key={i}
+                                              value={opt.value}
+                                              className="cursor-pointer w-max"
+                                            >
+                                              {opt.label}
+                                            </SelectItem>
+                                          ),
+                                        )}
                                       </SelectContent>
                                     </Select>
                                   )}
@@ -2469,12 +2558,14 @@ const OrdersPage = () => {
                                   <div>
                                     <div className="font-medium">
                                       {!isNaN(
-                                        new Date(order.appointmentDate).getTime(),
+                                        new Date(
+                                          order.appointmentDate,
+                                        ).getTime(),
                                       )
                                         ? format(
-                                          new Date(order.appointmentDate),
-                                          "MMM dd, yyyy",
-                                        )
+                                            new Date(order.appointmentDate),
+                                            "MMM dd, yyyy",
+                                          )
                                         : "N/A"}
                                     </div>
                                     <div className="text-xs text-muted-foreground">
@@ -2555,7 +2646,10 @@ const OrdersPage = () => {
 
                                   {user.role === UserRole.ADMIN && (
                                     <div>
-                                      <label className="text-sm" htmlFor="pinOrder">
+                                      <label
+                                        className="text-sm"
+                                        htmlFor="pinOrder"
+                                      >
                                         Pin order
                                       </label>
                                       <Switch
@@ -2594,7 +2688,9 @@ const OrdersPage = () => {
                                           <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent className="w-max">
-                                          <SelectItem value="none">None</SelectItem>
+                                          <SelectItem value="none">
+                                            None
+                                          </SelectItem>
                                           {teamMembersViaRole?.map((el) => {
                                             return (
                                               <SelectItem
@@ -2622,7 +2718,9 @@ const OrdersPage = () => {
                               </TableRow>
                               <TableRow>
                                 <TableCell
-                                  colSpan={user.role != UserRole.ADMIN ? 11 : 10}
+                                  colSpan={
+                                    user.role != UserRole.ADMIN ? 11 : 10
+                                  }
                                   className="p-0"
                                 >
                                   <OrderTimelineView
@@ -2636,11 +2734,11 @@ const OrdersPage = () => {
                       </Table>
                     </>
                   )}
-                  {(
+                  {
                     <div className="flex items-center justify-between mt-4">
                       <div className="text-sm text-muted-foreground">
-                        Showing {pagination?.count || 0} of {pagination?.total || 0}{" "}
-                        orders
+                        Showing {pagination?.count || 0} of{" "}
+                        {pagination?.total || 0} orders
                       </div>
                       <div className="flex gap-2">
                         <Button
@@ -2669,7 +2767,7 @@ const OrdersPage = () => {
                         </Button>
                       </div>
                     </div>
-                  )}
+                  }
                 </div>
               )}
             </div>
@@ -2677,35 +2775,37 @@ const OrdersPage = () => {
 
           {(user.role === UserRole.ADMIN ||
             user.role === UserRole.PICKUP_COORDINATOR) && (
-              <TabsContent value="pickups">
-                <PickupsPage />
-              </TabsContent>
-            )}
+            <TabsContent value="pickups">
+              <PickupsPage />
+            </TabsContent>
+          )}
 
           {(user.role === UserRole.ADMIN ||
             user.role === UserRole.PICKUP_COORDINATOR) && (
-              <TabsContent value="delivery">
-                <RoleQueueView
-                  role="DELIVERY"
-                  onOpenOrder={openOrderModal}
-                  canEdit={canEdit}
-                  cuttingAgents={cuttingAgents}
-                />
-              </TabsContent>
-            )}
+            <TabsContent value="delivery">
+              <RoleQueueView
+                role="DELIVERY"
+                onOpenOrder={openOrderModal}
+                canEdit={canEdit}
+                cuttingAgents={cuttingAgents}
+              />
+            </TabsContent>
+          )}
 
           {(user.role === UserRole.ADMIN ||
             user.role === UserRole.CUTTING ||
             user.role === UserRole.STITCHING) && (
-              <TabsContent value="queue">
-                <RoleQueueView
-                  role={user.role === UserRole.STITCHING ? "STITCHING" : "CUTTING"}
-                  onOpenOrder={openOrderModal}
-                  canEdit={canEdit}
-                  cuttingAgents={cuttingAgents}
-                />
-              </TabsContent>
-            )}
+            <TabsContent value="queue">
+              <RoleQueueView
+                role={
+                  user.role === UserRole.STITCHING ? "STITCHING" : "CUTTING"
+                }
+                onOpenOrder={openOrderModal}
+                canEdit={canEdit}
+                cuttingAgents={cuttingAgents}
+              />
+            </TabsContent>
+          )}
 
           {(user.role === UserRole.ADMIN || user.role === UserRole.CUTTING) && (
             <TabsContent value="alteration">
@@ -2807,9 +2907,9 @@ const OrdersPage = () => {
                         label: "Next Delivery",
                         value: selectedCustomer.nextDelivery
                           ? format(
-                            new Date(selectedCustomer.nextDelivery),
-                            "dd MMM yyyy",
-                          )
+                              new Date(selectedCustomer.nextDelivery),
+                              "dd MMM yyyy",
+                            )
                           : "N/A",
                       },
                     ].map((stat) => (
@@ -2869,11 +2969,11 @@ const OrdersPage = () => {
                             </div>
                             <div className="truncate">
                               {order.appointmentDate &&
-                                !isNaN(new Date(order.appointmentDate).getTime())
+                              !isNaN(new Date(order.appointmentDate).getTime())
                                 ? format(
-                                  new Date(order.appointmentDate),
-                                  "dd MMM yyyy",
-                                )
+                                    new Date(order.appointmentDate),
+                                    "dd MMM yyyy",
+                                  )
                                 : "N/A"}
                               {order.appointmentTime
                                 ? ` · ${order.appointmentTime}`
@@ -2889,8 +2989,10 @@ const OrdersPage = () => {
                             <span
                               className={cn(
                                 "text-xs px-2 py-0.5 rounded-full border",
-                                getPaymentStatusBadgeColor(order.paymentStatus).bg,
-                                getPaymentStatusBadgeColor(order.paymentStatus).text,
+                                getPaymentStatusBadgeColor(order.paymentStatus)
+                                  .bg,
+                                getPaymentStatusBadgeColor(order.paymentStatus)
+                                  .text,
                                 getPaymentStatusBadgeColor(order.paymentStatus)
                                   .border,
                               )}
@@ -2922,7 +3024,6 @@ const OrdersPage = () => {
                   ))}
                 </Tabs>
 
-
                 {/* Summary */}
                 <div className="border-t pt-4">
                   <div className="flex justify-between items-center">
@@ -2950,63 +3051,81 @@ const OrdersPage = () => {
         <DialogPortal>
           <DialogOverlay className="fixed inset-0 bg-black/60 z-50" />
           <DialogContent className="fixed top-1/2 left-1/2 z-50 w-full max-w-5xl max-h-[92vh] -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col">
-            {selectedOrder ? (
-              (() => {
-                const detailCache: any = queryClient.getQueryData(["order-detail", selectedOrder.id || selectedOrder._id]);
-                const displayOrderId =
-                  (selectedOrder.orderId && selectedOrder.orderId !== selectedOrder.id && selectedOrder.orderId !== selectedOrder._id)
-                    ? selectedOrder.orderId
-                    : detailCache?.order?.orderId || detailCache?.orderId || detailCache?.customOrderId || selectedOrder.orderId;
-                const displayState =
-                  selectedOrder.orderProcessingState || detailCache?.order?.orderProcessingState || detailCache?.orderProcessingState;
-                const displayStatus =
-                  selectedOrder.orderStatus || detailCache?.order?.orderStatus || detailCache?.orderStatus;
-                const displayCustomerName =
-                  selectedOrder.customerName || detailCache?.address?.name || (detailCache?.customer ? `${detailCache.customer.firstName || ""} ${detailCache.customer.lastName || ""}`.trim() : "");
-                const displayPhone =
-                  selectedOrder.customerPhone || detailCache?.address?.phone || "—";
+            {selectedOrder
+              ? (() => {
+                  const detailCache: any = queryClient.getQueryData(["order-detail", selectedOrder.id || selectedOrder._id]);
+                  const displayOrderId =
+                    selectedOrder.orderId &&
+                    selectedOrder.orderId !== selectedOrder.id &&
+                    selectedOrder.orderId !== selectedOrder._id
+                      ? selectedOrder.orderId
+                      : detailCache?.order?.orderId ||
+                        detailCache?.orderId ||
+                        detailCache?.customOrderId ||
+                        selectedOrder.orderId;
+                  const displayState =
+                    selectedOrder.orderProcessingState ||
+                    detailCache?.order?.orderProcessingState ||
+                    detailCache?.orderProcessingState;
+                  const displayStatus =
+                    selectedOrder.orderStatus ||
+                    detailCache?.order?.orderStatus ||
+                    detailCache?.orderStatus;
+                  const displayCustomerName =
+                    selectedOrder.customerName ||
+                    detailCache?.address?.name ||
+                    (detailCache?.customer
+                      ? `${detailCache.customer.firstName || ""} ${detailCache.customer.lastName || ""}`.trim()
+                      : "");
+                  const displayPhone =
+                    selectedOrder.customerPhone ||
+                    detailCache?.address?.phone ||
+                    "—";
 
-                return (
-                  <>
-                    <div className="flex items-start justify-between gap-4 border-b px-6 py-4 bg-muted/30">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h2 className="text-xl font-bold font-mono">
-                            {displayOrderId}
-                          </h2>
-                          {displayState && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium capitalize">
-                              {displayState.replace(/_/g, " ")}
-                            </span>
-                          )}
-                          {displayStatus && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium capitalize">
-                              {displayStatus.replace(/_/g, " ")}
-                            </span>
+                  return (
+                    <>
+                      <div className="flex items-start justify-between gap-4 border-b px-6 py-4 bg-muted/30">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h2 className="text-xl font-bold font-mono">
+                              {displayOrderId}
+                            </h2>
+                            {displayState && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium capitalize">
+                                {displayState.replace(/_/g, " ")}
+                              </span>
+                            )}
+                            {displayStatus && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium capitalize">
+                                {displayStatus.replace(/_/g, " ")}
+                              </span>
+                            )}
+                          </div>
+                          {(displayCustomerName || displayPhone) && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {displayCustomerName
+                                ? `${displayCustomerName} · `
+                                : ""}
+                              {displayPhone}
+                            </p>
                           )}
                         </div>
-                        {(displayCustomerName || displayPhone) && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {displayCustomerName ? `${displayCustomerName} · ` : ""}{displayPhone}
-                          </p>
-                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsOrderModalOpen(false)}
+                        >
+                          Close
+                        </Button>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setIsOrderModalOpen(false)}
-                      >
-                        Close
-                      </Button>
-                    </div>
 
-                    <div className="overflow-y-auto px-6 py-5">
-                      {renderOrderDetail(selectedOrder)}
-                    </div>
-                  </>
-                );
-              })()
-            ) : null}
+                      <div className="overflow-y-auto px-6 py-5">
+                        {renderOrderDetail(selectedOrder)}
+                      </div>
+                    </>
+                  );
+                })()
+              : null}
           </DialogContent>
         </DialogPortal>
       </Dialog>
