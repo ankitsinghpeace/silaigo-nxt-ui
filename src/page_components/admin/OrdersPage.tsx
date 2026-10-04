@@ -185,6 +185,12 @@ const ORDER_STATUS_OPTIONS_FOR_EDIT = [
   OrderStatus.CANCELLED,
 ];
 
+const getOrderAmount = (order: any): number => {
+  const value = order?.customPrice ?? order?.productPrice ?? 0;
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : 0;
+};
+
 const getPaymentStatusBadgeColor = (status: string) => {
   switch (status) {
     case PaymentStatus.SUCCESS:
@@ -629,7 +635,7 @@ const OrdersPage = () => {
       const bucket = acc[customerKey];
       bucket.orders.push(order);
       bucket.totalItems += 1;
-      bucket.totalAmount += order.productPrice || 0;
+      bucket.totalAmount += getOrderAmount(order);
       if (order.paymentStatus === PaymentStatus.SUCCESS) bucket.paidCount += 1;
       else bucket.pendingPaymentCount += 1;
       if (order.orderStatus === OrderStatus.COMPLETED)
@@ -800,7 +806,7 @@ const OrdersPage = () => {
   };
 
   const pageMetrics = useMemo(() => {
-    const amount = (o: any) => Number(o?.customPrice || o?.productPrice || 0);
+    const amount = getOrderAmount;
     const total = orders.reduce((s: number, o: any) => s + amount(o), 0);
     const paid = orders.filter((o: any) =>
       String(o?.paymentStatus || "")
@@ -2384,11 +2390,7 @@ const OrdersPage = () => {
                                           </div>
                                           <div className="col-span-6 md:col-span-1 md:text-right font-semibold">
                                             ₹
-                                            {(
-                                              order.customPrice ||
-                                              order.productPrice ||
-                                              0
-                                            ).toLocaleString()}
+                                            {(getOrderAmount(order)).toLocaleString()}
                                           </div>
                                         </div>
                                       ))}
@@ -2595,10 +2597,7 @@ const OrdersPage = () => {
                                 </TableCell>
 
                                 <TableCell className="align-top">
-                                  Rs.{" "}
-                                  {order.customPrice
-                                    ? order.customPrice
-                                    : order.productPrice}
+                                  Rs. {getOrderAmount(order).toLocaleString()}
                                 </TableCell>
 
                                 <TableCell className="flex gap-2 align-top">
@@ -3002,11 +3001,7 @@ const OrdersPage = () => {
                           </div>
                           <div className="col-span-12 md:col-span-2 md:text-right font-semibold">
                             ₹
-                            {(
-                              order.customPrice ||
-                              order.productPrice ||
-                              0
-                            ).toLocaleString()}
+                            {(getOrderAmount(order)).toLocaleString()}
                           </div>
                         </div>
                       ))}
