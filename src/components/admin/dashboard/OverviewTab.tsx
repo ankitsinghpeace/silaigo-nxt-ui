@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ShoppingBag,
@@ -25,16 +25,10 @@ import {
 } from "recharts";
 import StatTile from "./StatTile";
 import DrillDownModal, { DrillDownState } from "./DrillDownModal";
-import {
-  DateRange,
-  OrderRecord,
-  ordersInRange,
-  previousRange,
-  computeOverview,
-  computeCategoryStats,
-  computeDailyFlow,
-  formatDay,
-} from "@/lib/adminSampleData";
+import { DateRange } from "@/lib/adminSampleData";
+import { useOverview } from "@/hooks/useAnalytics";
+import { getOrders } from "@/services/analytics.api";
+import { formatDay } from "@/lib/adminSampleData";
 
 const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#94a3b8"];
 
@@ -44,19 +38,41 @@ interface Props {
 
 const OverviewTab: React.FC<Props> = ({ range }) => {
   const [drill, setDrill] = useState<DrillDownState | null>(null);
+  const { data, loading, error } = useOverview(range);
 
-  const rows = useMemo(() => ordersInRange(range), [range]);
-  const prevRows = useMemo(() => ordersInRange(previousRange(range)), [range]);
-  const kpis = useMemo(() => computeOverview(rows, prevRows), [rows, prevRows]);
-  const categoryStats = useMemo(() => computeCategoryStats(rows), [rows]);
-  const dailyFlow = useMemo(() => computeDailyFlow(rows, range), [rows, range]);
+  const open = async (title: string, description: string, filters: any) => {
+    try {
+      const ordersData = await getOrders({
+        ...range,
+        ...filters,
+        page: 1,
+        limit: 1000,
+      });
+      setDrill({ title, description, rows: ordersData.orders });
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    }
+  };
 
-  const open = (title: string, description: string, list: OrderRecord[]) =>
-    setDrill({ title, description, rows: list });
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Loading overview data...</div>
+      </div>
+    );
+  }
 
-  const byStatus = (s: OrderRecord["status"]) => rows.filter((o) => o.status === s);
+  if (error || !data) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Failed to load overview data</div>
+      </div>
+    );
+  }
 
-  const statusData = [
+  const { kpis, dailyFlow, categoryStats, statusDistribution } = data;
+
+  const statusData = statusDistribution || [
     { name: "Completed", value: kpis.completed },
     { name: "In Progress", value: kpis.inProgress },
     { name: "Not Started", value: kpis.notStarted },
@@ -72,29 +88,27 @@ const OverviewTab: React.FC<Props> = ({ range }) => {
   const maxRevenue = Math.max(1, ...categoryStats.map((c) => c.revenue));
 
   const openStatus = (name: string) =>
-    open(`${name} orders`, `${formatDay(range.from)} – ${formatDay(range.to)}`, byStatus(name as OrderRecord["status"]));
+    open(`${name} orders`, `${formatDay(range.from)} – ${formatDay(range.to)}`, { status: name });
 
   const openCategory = (category: string) =>
     open(
       `${category} orders`,
       `All orders in ${category} for the selected period`,
-      rows.filter((o) => o.category === category),
+      { category },
     );
 
   const openDay = (isoDate: string, mode: "in" | "out") =>
     open(
       mode === "in" ? `Orders received on ${formatDay(isoDate)}` : `Orders delivered on ${formatDay(isoDate)}`,
       mode === "in" ? "Orders booked that day" : "Completed orders delivered that day",
-      mode === "in"
-        ? rows.filter((o) => o.orderDate === isoDate)
-        : rows.filter((o) => o.status === "Completed" && o.deliveryDate === isoDate),
+      { search: isoDate }, // Using search to filter by date (API will need to support this)
     );
 
   return (
     <div className="space-y-5">
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-6">
-        <StatTile label="Total Orders" value={kpis.totalOrders} delta={kpis.deltas.totalOrders} sub="vs previous period" icon={ShoppingBag} tone="sky" onClick={() => open("All orders", `${formatDay(range.from)} – ${formatDay(range.to)}`, rows)} />
-        <StatTile label="Revenue" value={`₹${kpis.revenue.toLocaleString()}`} delta={kpis.deltas.revenue} sub="vs previous period" icon={IndianRupee} tone="emerald" onClick={() => open("Revenue — all orders", "Every order contributing to revenue", rows)} />
+        <StatTile label="Total Orders" value={kpis.totalOrders} delta={kpis.deltas.totalOrders} sub="vs previous period" icon={ShoppingBag} tone="sky" onClick={() => open("All orders", `${formatDay(range.from)} – ${formatDay(range.to)}`, {})} />
+        <StatTile label="Revenue" value={`₹${kpis.revenue.toLocaleString()}`} delta={kpis.deltas.revenue} sub="vs previous period" icon={IndianRupee} tone="emerald" onClick={() => open("Revenue — all orders", "Every order contributing to revenue", {})} />
         <StatTile label="Completed" value={kpis.completed} delta={kpis.deltas.completed} sub="vs previous period" icon={CheckCircle2} tone="violet" onClick={() => openStatus("Completed")} />
         <StatTile label="In Progress" value={kpis.inProgress} delta={kpis.deltas.inProgress} sub="vs previous period" icon={Clock} tone="amber" onClick={() => openStatus("In Progress")} />
         <StatTile label="Not Started" value={kpis.notStarted} delta={kpis.deltas.notStarted} sub="vs previous period" icon={PauseCircle} tone="rose" invertDelta onClick={() => openStatus("Not Started")} />
@@ -279,7 +293,7 @@ const OverviewTab: React.FC<Props> = ({ range }) => {
             </thead>
             <tbody>
               {categoryStats.map((c) => {
-                const cell = (status: OrderRecord["status"], count: number, tone: string) => (
+                const cell = (status: string, count: number, tone: string) => (
                   <td className="py-2 pr-4">
                     <button
                       className={`${tone} hover:underline`}
@@ -287,7 +301,7 @@ const OverviewTab: React.FC<Props> = ({ range }) => {
                         open(
                           `${c.category} · ${status}`,
                           "Orders matching this category and status",
-                          rows.filter((o) => o.category === c.category && o.status === status),
+                          { category: c.category, status },
                         )
                       }
                     >

@@ -21,14 +21,18 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: [
     "admin-dashboard-fix-90.cluster-5.preview.emergentcf.cloud",
     "3bdb106f-e360-4a3e-a19a-e7172fcb87b9.preview.emergentagent.com",
-    "3bdb106f-e360-4a3e-a19a-e7172fcb87b9.cluster-5.preview.emergentcf.cloud",
+    "3bdb106f-e360-4a3e-a19a-e172fcb87b9.cluster-5.preview.emergentcf.cloud",
   ],
 
   async rewrites() {
+    const isDevelopment = process.env.NODE_ENV !== 'production';
+    
     return [
       {
         source: "/api/:path*",
-        destination: "https://api.silaigo.com/:path*",
+        destination: isDevelopment 
+          ? "http://localhost:3001/api/:path*"
+          : "https://api.silaigo.com/:path*",
       },
       {
         source: "/kurti",

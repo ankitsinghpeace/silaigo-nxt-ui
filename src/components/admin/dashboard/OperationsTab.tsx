@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,15 +38,10 @@ import {
 import StatTile from "./StatTile";
 import DrillDownModal, { DrillDownState } from "./DrillDownModal";
 import { cn } from "@/lib/utils";
-import {
-  DateRange,
-  OrderRecord,
-  ordersInRange,
-  computeEmployeeStats,
-  computeCategoryQueue,
-  computeStages,
-  formatDay,
-} from "@/lib/adminSampleData";
+import { DateRange } from "@/lib/adminSampleData";
+import { useOperations } from "@/hooks/useAnalytics";
+import { getOrders } from "@/services/analytics.api";
+import { formatDay } from "@/lib/adminSampleData";
 
 type GroupKey = "employee" | "stage" | "category";
 
@@ -66,71 +61,99 @@ interface Props {
 
 const OperationsTab: React.FC<Props> = ({ range }) => {
   const [groupBy, setGroupBy] = useState<GroupKey>("employee");
-  const [assigning, setAssigning] = useState<OrderRecord | null>(null);
+  const [assigning, setAssigning] = useState<any>(null);
   const [assignee, setAssignee] = useState<string>("");
   const [drill, setDrill] = useState<DrillDownState | null>(null);
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [employeeFilter, setEmployeeFilter] = useState<string>("all");
+  const { data, loading, error } = useOperations(range);
+  const [ordersData, setOrdersData] = useState<any>(null);
 
-  const rows = useMemo(() => ordersInRange(range), [range]);
-  const openOrders = useMemo(
-    () => rows.filter((o) => o.status === "In Progress" || o.status === "Not Started"),
-    [rows],
-  );
-  const employees = useMemo(() => computeEmployeeStats(rows), [rows]);
-  const categoryQueue = useMemo(() => computeCategoryQueue(rows), [rows]);
-  const stages = useMemo(() => computeStages(rows), [rows]);
   const period = `${formatDay(range.from)} – ${formatDay(range.to)}`;
 
-  const open = (title: string, description: string, list: OrderRecord[]) =>
-    setDrill({ title, description, rows: list });
+  const open = async (title: string, description: string, filters: any) => {
+    try {
+      const ordersResult = await getOrders({
+        ...range,
+        ...filters,
+        page: 1,
+        limit: 1000,
+      });
+      setDrill({ title, description, rows: ordersResult.orders });
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    }
+  };
 
-  const delayed = rows.filter(
-    (o) => o.status !== "Completed" && o.status !== "Returned" && o.deliveryDate < range.to,
+  const fetchActiveOrders = async (filters: any = {}) => {
+    try {
+      const result = await getOrders({
+        ...range,
+        status: "In Progress",
+        ...filters,
+        page: 1,
+        limit: 1000,
+      });
+      setOrdersData(result.orders);
+    } catch (error) {
+      console.error("Error fetching active orders:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (data) {
+      fetchActiveOrders();
+    }
+  }, [data, range, stageFilter, employeeFilter]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Loading operations data...</div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Failed to load operations data</div>
+      </div>
+    );
+  }
+
+  const { kpis, productionStages, bottlenecks, employeeEfficiency, categoryQueue } = data;
+  const openOrders = ordersData || [];
+
+  const visibleOrders = openOrders.filter(
+    (o: any) =>
+      (stageFilter === "all" || o.stage === stageFilter) &&
+      (employeeFilter === "all" || o.employee === employeeFilter),
   );
-  const completed = rows.filter((o) => o.status === "Completed");
-  const onTimePct = completed.length
-    ? Math.round((completed.filter((o) => o.hours <= 8).length / completed.length) * 100)
-    : 0;
-  const queueHours = Math.round(openOrders.reduce((s, o) => s + o.hours, 0));
-  const avgDays = completed.length
-    ? Math.round((completed.reduce((s, o) => s + o.hours, 0) / completed.length / 8) * 10) / 10
-    : 0;
 
-  const visibleOrders = useMemo(
-    () =>
-      openOrders.filter(
-        (o) =>
-          (stageFilter === "all" || o.stage === stageFilter) &&
-          (employeeFilter === "all" || o.employee === employeeFilter),
-      ),
-    [openOrders, stageFilter, employeeFilter],
-  );
-
-  const grouped = useMemo(() => {
-    const map = new Map<string, OrderRecord[]>();
-    visibleOrders.forEach((o) => {
+  const grouped = (() => {
+    const map = new Map<string, any[]>();
+    visibleOrders.forEach((o: any) => {
       const key = groupBy === "employee" ? o.employee : groupBy === "stage" ? o.stage : o.category;
       map.set(key, [...(map.get(key) || []), o]);
     });
     return Array.from(map.entries()).sort((a, b) => b[1].length - a[1].length);
-  }, [visibleOrders, groupBy]);
+  })();
 
-  const bottlenecks = stages;
   const maxBottleneck = Math.max(1, ...bottlenecks.map((b) => b.count));
-  const selectedEmployee = employees.find((e) => e.id === assignee);
-  const stageOptions = Array.from(new Set(openOrders.map((o) => o.stage))).sort();
-  const employeeOptions = Array.from(new Set(openOrders.map((o) => o.employee))).sort();
+  const selectedEmployee = employeeEfficiency.find((e) => e.id === assignee);
+  const stageOptions = Array.from(new Set(openOrders.map((o: any) => o.stage))).sort();
+  const employeeOptions = Array.from(new Set(openOrders.map((o: any) => o.employee))).sort();
 
   return (
     <div className="space-y-5">
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-6">
-        <StatTile label="Orders in Queue" value={openOrders.length} sub="in production" icon={Layers} tone="sky" onClick={() => open("Orders in queue", period, openOrders)} />
-        <StatTile label="Estimated Workload" value={`${queueHours} hrs`} sub="pending work" icon={Clock} tone="rose" onClick={() => open("Pending workload", "Open orders making up the queue hours", openOrders)} />
-        <StatTile label="Avg. Completion" value={`${avgDays} days`} sub="completed orders" icon={CalendarCheck} tone="emerald" onClick={() => open("Completed orders", period, completed)} />
-        <StatTile label="On-Time Completion" value={`${onTimePct}%`} sub="of completed orders" icon={Target} tone="amber" onClick={() => open("On-time completions", "Completed within target hours", completed.filter((o) => o.hours <= 8))} />
-        <StatTile label="Delayed Orders" value={delayed.length} sub="past delivery date" icon={AlertTriangle} tone="rose" onClick={() => open("Delayed orders", "Open orders past their delivery date", delayed)} />
-        <StatTile label="Unassigned" value={openOrders.filter((o) => o.employee === "Unassigned").length} sub="need an owner" icon={Zap} tone="violet" onClick={() => open("Unassigned orders", "Waiting to be allocated", openOrders.filter((o) => o.employee === "Unassigned"))} />
+        <StatTile label="Orders in Queue" value={kpis.ordersInQueue} sub="in production" icon={Layers} tone="sky" onClick={() => open("Orders in queue", period, { status: "In Progress" })} />
+        <StatTile label="Estimated Workload" value={`${kpis.estimatedWorkloadHours} hrs`} sub="pending work" icon={Clock} tone="rose" onClick={() => open("Pending workload", "Open orders making up the queue hours", { status: "In Progress" })} />
+        <StatTile label="Avg. Completion" value={`${kpis.avgCompletionDays} days`} sub="completed orders" icon={CalendarCheck} tone="emerald" onClick={() => open("Completed orders", period, { status: "Completed" })} />
+        <StatTile label="On-Time Completion" value={`${kpis.onTimeCompletionPct}%`} sub="of completed orders" icon={Target} tone="amber" onClick={() => open("On-time completions", "Completed within target hours", { status: "Completed" })} />
+        <StatTile label="Delayed Orders" value={kpis.delayedOrders} sub="past delivery date" icon={AlertTriangle} tone="rose" onClick={() => open("Delayed orders", "Open orders past their delivery date", { status: "In Progress" })} />
+        <StatTile label="Unassigned" value={kpis.unassignedOrders} sub="need an owner" icon={Zap} tone="violet" onClick={() => open("Unassigned orders", "Waiting to be allocated", { employee: "Unassigned" })} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -141,10 +164,10 @@ const OperationsTab: React.FC<Props> = ({ range }) => {
           </CardHeader>
           <CardContent>
             <div className="flex items-stretch gap-2 overflow-x-auto pb-2">
-              {stages.map((s, i) => (
+              {productionStages.map((s, i) => (
                 <React.Fragment key={s.stage}>
                   <button
-                    onClick={() => open(`${s.stage} orders`, period, openOrders.filter((o) => o.stage === s.stage))}
+                    onClick={() => open(`${s.stage} orders`, period, { stage: s.stage })}
                     className="flex-1 min-w-[110px] rounded-lg border bg-muted/40 p-4 text-center transition-colors hover:border-primary/50 hover:bg-muted"
                   >
                     <p className="text-2xl font-bold">{s.count}</p>
@@ -166,7 +189,7 @@ const OperationsTab: React.FC<Props> = ({ range }) => {
             {bottlenecks.map((b, i) => (
               <button
                 key={b.stage}
-                onClick={() => open(`${b.stage} orders`, period, openOrders.filter((o) => o.stage === b.stage))}
+                onClick={() => open(`${b.stage} orders`, period, { stage: b.stage })}
                 className="w-full flex items-center gap-3 text-sm rounded px-1 py-0.5 hover:bg-muted/60"
               >
                 <span className="w-24 shrink-0 text-left text-muted-foreground">{b.stage}</span>
@@ -205,11 +228,11 @@ const OperationsTab: React.FC<Props> = ({ range }) => {
                 </tr>
               </thead>
               <tbody>
-                {employees.map((e) => (
+                {employeeEfficiency.map((e) => (
                   <tr
                     key={e.id}
                     onClick={() =>
-                      open(`${e.name} — orders`, `${e.role} · ${period}`, rows.filter((o) => o.employee === e.name))
+                      open(`${e.name} — orders`, `${e.role} · ${period}`, { employee: e.id })
                     }
                     className="border-b last:border-0 cursor-pointer hover:bg-muted/40"
                   >
@@ -271,7 +294,7 @@ const OperationsTab: React.FC<Props> = ({ range }) => {
                       open(
                         `${p.category} queue`,
                         "Orders waiting in this category",
-                        openOrders.filter((o) => o.category === p.category),
+                        { category: p.category },
                       );
                   }}
                 >
@@ -288,7 +311,7 @@ const OperationsTab: React.FC<Props> = ({ range }) => {
                 <button
                   key={c.category}
                   onClick={() =>
-                    open(`${c.category} queue`, "Orders waiting in this category", openOrders.filter((o) => o.category === c.category))
+                    open(`${c.category} queue`, "Orders waiting in this category", { category: c.category })
                   }
                   className="w-full flex items-center justify-between text-sm rounded px-1 py-0.5 hover:bg-muted/60"
                 >
@@ -402,7 +425,7 @@ const OperationsTab: React.FC<Props> = ({ range }) => {
               Current workload is shown for each teammate so you don&apos;t overload them.
             </p>
             <div className="space-y-2 max-h-[50vh] overflow-auto">
-              {employees.map((e) => {
+              {employeeEfficiency.map((e) => {
                 const pct = Math.round((e.activeLoad / e.capacity) * 100);
                 const busy = pct > 85;
                 return (

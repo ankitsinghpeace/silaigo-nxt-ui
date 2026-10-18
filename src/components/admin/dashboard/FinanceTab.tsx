@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   IndianRupee,
@@ -27,18 +27,10 @@ import {
 } from "recharts";
 import StatTile from "./StatTile";
 import DrillDownModal, { DrillDownState } from "./DrillDownModal";
-import {
-  DateRange,
-  OrderRecord,
-  ordersInRange,
-  computeFinance,
-  computeCategoryStats,
-  computeDailyFlow,
-  computePaymentMethods,
-  computeValueBuckets,
-  VALUE_BUCKETS,
-  formatDay,
-} from "@/lib/adminSampleData";
+import { DateRange } from "@/lib/adminSampleData";
+import { useFinance } from "@/hooks/useAnalytics";
+import { getOrders } from "@/services/analytics.api";
+import { formatDay } from "@/lib/adminSampleData";
 
 const COLORS = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#94a3b8", "#ef4444"];
 
@@ -48,41 +40,72 @@ interface Props {
 
 const FinanceTab: React.FC<Props> = ({ range }) => {
   const [drill, setDrill] = useState<DrillDownState | null>(null);
+  const { data, loading, error } = useFinance(range);
 
-  const rows = useMemo(() => ordersInRange(range), [range]);
-  const finance = useMemo(() => computeFinance(rows), [rows]);
-  const categoryStats = useMemo(() => computeCategoryStats(rows), [rows]);
-  const dailyFlow = useMemo(() => computeDailyFlow(rows, range), [rows, range]);
-  const paymentMethods = useMemo(() => computePaymentMethods(rows), [rows]);
-  const orderValueBuckets = useMemo(() => computeValueBuckets(rows), [rows]);
+  const open = async (title: string, description: string, filters: any) => {
+    try {
+      const ordersData = await getOrders({
+        ...range,
+        ...filters,
+        page: 1,
+        limit: 1000,
+      });
+      setDrill({ title, description, rows: ordersData.orders });
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    }
+  };
 
-  const open = (title: string, description: string, list: OrderRecord[]) =>
-    setDrill({ title, description, rows: list });
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Loading finance data...</div>
+      </div>
+    );
+  }
 
-  const totalCategoryRevenue = categoryStats.reduce((s, c) => s + c.revenue, 0) || 1;
+  if (error || !data) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Failed to load finance data</div>
+      </div>
+    );
+  }
+
+  const { kpis, dailyFlow, categoryRevenue, paymentMethods, orderValueBuckets } = data;
+
+  const totalCategoryRevenue = categoryRevenue.reduce((s, c) => s + c.revenue, 0) || 1;
   const period = `${formatDay(range.from)} – ${formatDay(range.to)}`;
 
-  const openPayment = (payment: OrderRecord["payment"], label: string) =>
-    open(label, period, rows.filter((o) => o.payment === payment));
+  const openPayment = (payment: string, label: string) =>
+    open(label, period, { payment });
 
   const openCategory = (category: string) =>
-    open(`${category} revenue`, "Orders contributing to this category's revenue", rows.filter((o) => o.category === category));
+    open(`${category} revenue`, "Orders contributing to this category's revenue", { category });
 
   const openBucket = (rangeLabel: string) => {
-    const b = VALUE_BUCKETS.find((x) => x.range === rangeLabel);
+    const minMax: Record<string, { min: number; max: number }> = {
+      "< ₹500": { min: 0, max: 499 },
+      "₹500 - 1K": { min: 500, max: 999 },
+      "₹1K - 2K": { min: 1000, max: 1999 },
+      "₹2K - 5K": { min: 2000, max: 4999 },
+      "> ₹5K": { min: 5000, max: Infinity },
+    };
+    const b = minMax[rangeLabel];
     if (!b) return;
-    open(`Orders ${rangeLabel}`, "Orders in this value range", rows.filter((o) => o.value >= b.min && o.value <= b.max));
+    // Note: API doesn't support value range filter yet, this would need to be added
+    open(`Orders ${rangeLabel}`, "Orders in this value range", {});
   };
 
   return (
     <div className="space-y-5">
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-6">
-        <StatTile label="Total Revenue" value={`₹${finance.totalRevenue.toLocaleString()}`} sub={period} icon={IndianRupee} tone="emerald" onClick={() => open("All orders — revenue", period, rows)} />
-        <StatTile label="Collected" value={`₹${finance.completedValue.toLocaleString()}`} sub="paid orders" icon={CheckCircle2} tone="sky" onClick={() => openPayment("Paid", "Paid orders")} />
-        <StatTile label="Pending Value" value={`₹${finance.pendingValue.toLocaleString()}`} sub="to be collected" icon={Clock} tone="amber" onClick={() => openPayment("Pending", "Payment pending orders")} />
-        <StatTile label="Avg Order Value" value={`₹${finance.avgOrderValue.toLocaleString()}`} sub={`${rows.length} orders`} icon={Wallet} tone="violet" onClick={() => open("All orders by value", period, rows)} />
-        <StatTile label="Returns / Refunds" value={`₹${finance.refunds.toLocaleString()}`} sub="refunded" icon={RotateCcw} tone="rose" onClick={() => openPayment("Refunded", "Refunded orders")} />
-        <StatTile label="Net Revenue" value={`₹${finance.netRevenue.toLocaleString()}`} sub="after refunds" icon={TrendingUp} tone="emerald" onClick={() => open("Net revenue orders", "All orders excluding refunds", rows.filter((o) => o.payment !== "Refunded"))} />
+        <StatTile label="Total Revenue" value={`₹${kpis.totalRevenue.toLocaleString()}`} sub={period} icon={IndianRupee} tone="emerald" onClick={() => open("All orders — revenue", period, {})} />
+        <StatTile label="Collected" value={`₹${kpis.completedValue.toLocaleString()}`} sub="paid orders" icon={CheckCircle2} tone="sky" onClick={() => openPayment("Paid", "Paid orders")} />
+        <StatTile label="Pending Value" value={`₹${kpis.pendingValue.toLocaleString()}`} sub="to be collected" icon={Clock} tone="amber" onClick={() => openPayment("Pending", "Payment pending orders")} />
+        <StatTile label="Avg Order Value" value={`₹${kpis.avgOrderValue.toLocaleString()}`} sub="orders" icon={Wallet} tone="violet" onClick={() => open("All orders by value", period, {})} />
+        <StatTile label="Returns / Refunds" value={`₹${kpis.refunds.toLocaleString()}`} sub="refunded" icon={RotateCcw} tone="rose" onClick={() => openPayment("Refunded", "Refunded orders")} />
+        <StatTile label="Net Revenue" value={`₹${kpis.netRevenue.toLocaleString()}`} sub="after refunds" icon={TrendingUp} tone="emerald" onClick={() => open("Net revenue orders", "All orders excluding refunds", { payment: "Paid" })} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -105,7 +128,7 @@ const FinanceTab: React.FC<Props> = ({ range }) => {
                     open(
                       `Orders booked on ${p.date}`,
                       `₹${p.incomingValue.toLocaleString()} booked`,
-                      rows.filter((o) => o.orderDate === p.iso),
+                      { search: p.iso },
                     );
                 }}
               >
@@ -141,7 +164,7 @@ const FinanceTab: React.FC<Props> = ({ range }) => {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={categoryStats}
+                    data={categoryRevenue}
                     dataKey="revenue"
                     nameKey="category"
                     innerRadius={55}
@@ -150,7 +173,7 @@ const FinanceTab: React.FC<Props> = ({ range }) => {
                     style={{ cursor: "pointer" }}
                     onClick={(d: any) => openCategory(d?.category ?? d?.name)}
                   >
-                    {categoryStats.map((_, i) => (
+                    {categoryRevenue.map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
@@ -159,7 +182,7 @@ const FinanceTab: React.FC<Props> = ({ range }) => {
               </ResponsiveContainer>
             </div>
             <div className="space-y-1.5">
-              {categoryStats.map((c, i) => (
+              {categoryRevenue.map((c, i) => (
                 <button
                   key={c.category}
                   onClick={() => openCategory(c.category)}
@@ -228,7 +251,7 @@ const FinanceTab: React.FC<Props> = ({ range }) => {
                     paddingAngle={2}
                     style={{ cursor: "pointer" }}
                     onClick={(d: any) =>
-                      open(`${d?.name} payments`, period, rows.filter((o) => o.method === d?.name))
+                      open(`${d?.name} payments`, period, { payment: d?.name === "Others" ? "Pending" : d?.name })
                     }
                   >
                     {paymentMethods.map((_, i) => (
@@ -243,7 +266,7 @@ const FinanceTab: React.FC<Props> = ({ range }) => {
               {paymentMethods.map((p, i) => (
                 <button
                   key={p.name}
-                  onClick={() => open(`${p.name} payments`, period, rows.filter((o) => o.method === p.name))}
+                  onClick={() => open(`${p.name} payments`, period, { payment: p.name === "Others" ? "Pending" : p.name })}
                   className="w-full flex items-center justify-between text-sm rounded px-1 py-0.5 hover:bg-muted/60"
                 >
                   <span className="flex items-center gap-2">
@@ -265,32 +288,32 @@ const FinanceTab: React.FC<Props> = ({ range }) => {
             {[
               {
                 tone: "text-amber-600",
-                text: `₹${finance.pendingValue.toLocaleString()} is still pending collection.`,
-                rows: rows.filter((o) => o.payment === "Pending"),
+                text: `₹${kpis.pendingValue.toLocaleString()} is still pending collection.`,
                 title: "Payment pending orders",
+                filters: { payment: "Pending" },
               },
               {
                 tone: "text-rose-600",
-                text: `${rows.filter((o) => o.status === "Returned").length} orders were returned in this period.`,
-                rows: rows.filter((o) => o.status === "Returned"),
+                text: `Some orders were returned in this period.`,
                 title: "Returned orders",
+                filters: { payment: "Refunded" },
               },
               {
                 tone: "text-emerald-600",
-                text: `Average order value is ₹${finance.avgOrderValue.toLocaleString()}.`,
-                rows,
+                text: `Average order value is ₹${kpis.avgOrderValue.toLocaleString()}.`,
                 title: "All orders",
+                filters: {},
               },
               {
                 tone: "text-sky-600",
-                text: `${categoryStats[0]?.category ?? "Top category"} contributes ₹${(categoryStats[0]?.revenue ?? 0).toLocaleString()}.`,
-                rows: rows.filter((o) => o.category === categoryStats[0]?.category),
-                title: `${categoryStats[0]?.category ?? "Top category"} orders`,
+                text: `${categoryRevenue[0]?.category ?? "Top category"} contributes ₹${(categoryRevenue[0]?.revenue ?? 0).toLocaleString()}.`,
+                filters: { category: categoryRevenue[0]?.category },
+                title: `${categoryRevenue[0]?.category ?? "Top category"} orders`,
               },
             ].map((i) => (
               <button
                 key={i.text}
-                onClick={() => open(i.title, period, i.rows)}
+                onClick={() => open(i.title, period, i.filters)}
                 className="flex gap-2 text-left w-full rounded px-1 py-0.5 hover:bg-muted/60"
               >
                 <span className={i.tone}>●</span>
